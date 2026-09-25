@@ -912,7 +912,6 @@ export default function DirectorDashboard() {
 
           <TabsContent value="workers" className="mt-6 space-y-4">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-stone">Maksimal 5 ta sotuvchi</p>
               <Button
                 onClick={() => setOpenWorker(true)}
                 disabled={workers.length >= 5}
