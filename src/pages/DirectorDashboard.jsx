@@ -75,6 +75,8 @@ export default function DirectorDashboard() {
   const [salesWorker, setSalesWorker] = useState("all");
   const [salesBranch, setSalesBranch] = useState("all");
   const [salesProduct, setSalesProduct] = useState("all");
+  const [salesProductMode, setSalesProductMode] = useState("all");
+  const [productSummary, setProductSummary] = useState([]);
   const [statsBranch, setStatsBranch] = useState("all");
   const [branchForm, setBranchForm] = useState({
     name: "",
@@ -91,7 +93,7 @@ export default function DirectorDashboard() {
   });
 
   const load = useCallback(async () => {
-    const [s, u, w, b, o, sa, at, lp, al] = await Promise.all([
+    const [s, u, w, b, o, sa, ps, at, lp, al] = await Promise.all([
       api.get("/stats/overview", {
         params: statsBranch === "all" ? {} : { branch_id: statsBranch },
       }),
@@ -100,6 +102,9 @@ export default function DirectorDashboard() {
       api.get("/branches"),
       api.get("/orders"),
       api.get("/sales/all"),
+      api.get("/sales/product-summary", {
+        params: salesBranch === "all" ? {} : { branch_id: salesBranch },
+      }),
       api.get("/attendance"),
       api.get("/stats/customer-last-purchase"),
       api.get("/products/audit-logs").catch(() => ({ data: [] })),
@@ -110,10 +115,11 @@ export default function DirectorDashboard() {
     setBranches(b.data);
     setOrders(o.data);
     setSales(sa.data);
+    setProductSummary(ps.data);
     setAttendance(at.data);
     setLastPurch(lp.data);
     setAuditLogs(al.data);
-  }, [statsBranch]);
+  }, [statsBranch, salesBranch]);
 
   useEffect(() => {
     load();
@@ -273,6 +279,15 @@ export default function DirectorDashboard() {
     salesProduct,
   ]);
 
+  const visibleProductSummary = useMemo(() => {
+    if (salesProductMode === "all") return productSummary;
+    const sold = productSummary.filter((item) => item.sold_qty > 0);
+    if (salesProductMode === "top") return sold.slice(0, 10);
+    if (salesProductMode === "low")
+      return [...sold].sort((a, b) => a.sold_qty - b.sold_qty).slice(0, 10);
+    return productSummary.filter((item) => item.sold_qty === 0);
+  }, [productSummary, salesProductMode]);
+
   const salesSummary = useMemo(() => {
     const totalCount = filteredSales.length;
     const totalRevenue = filteredSales.reduce(
@@ -298,6 +313,7 @@ export default function DirectorDashboard() {
     setSalesWorker("all");
     setSalesBranch("all");
     setSalesProduct("all");
+    setSalesProductMode("all");
   };
 
   return (
@@ -775,6 +791,19 @@ export default function DirectorDashboard() {
                     ))}
                   </select>
                 </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-stone">Sotilish holati</Label>
+                  <select
+                    value={salesProductMode}
+                    onChange={(e) => setSalesProductMode(e.target.value)}
+                    className="h-10 w-full rounded-md border border-line bg-white px-3 text-sm text-noir"
+                  >
+                    <option value="all">Barcha mahsulotlar</option>
+                    <option value="top">Eng ko'p sotilganlar</option>
+                    <option value="low">Eng kam sotilganlar</option>
+                    <option value="unsold">Umuman sotilmaganlar</option>
+                  </select>
+                </div>
               </div>
 
               <div className="grid md:grid-cols-4 gap-3">
@@ -798,6 +827,36 @@ export default function DirectorDashboard() {
                 />
               </div>
             </div>
+
+            {salesProductMode !== "all" && (
+              <div className="bg-white rounded-2xl border border-line p-4">
+                <h3 className="font-serif text-xl text-noir mb-3">
+                  {salesProductMode === "top"
+                    ? "Eng ko'p sotilgan dorilar"
+                    : salesProductMode === "low"
+                      ? "Eng kam sotilgan dorilar"
+                      : "Umuman sotilmagan dorilar"}
+                </h3>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {visibleProductSummary.map((item) => (
+                    <div
+                      key={item.product_id}
+                      className="rounded-lg bg-cream px-3 py-2 flex items-center justify-between gap-3 text-sm"
+                    >
+                      <span className="truncate">{item.name}</span>
+                      <span className="font-semibold text-noir whitespace-nowrap">
+                        {item.sold_qty} dona
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {visibleProductSummary.length === 0 && (
+                  <div className="text-sm text-stone py-3">
+                    Bu filter bo'yicha mahsulot topilmadi.
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="bg-white rounded-2xl border border-line overflow-hidden overflow-x-auto">
               <Table>
