@@ -47,6 +47,8 @@ const STATUS_STYLE = {
   cancelled: "bg-gray-100 text-gray-500",
 };
 
+import { DatePicker } from "@/components/ui/date-picker";
+
 function DatePickerField({
   label,
   value,
@@ -55,40 +57,19 @@ function DatePickerField({
   min,
   testId,
 }) {
-  const selected = value ? new Date(`${value}T00:00:00`) : undefined;
-
   return (
     <div className="text-xs text-stone">
       <span>{label}</span>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            className="mt-1 w-full min-w-[140px] justify-between bg-white text-left font-normal"
-            data-testid={testId}
-          >
-            <span className={value ? "text-noir" : "text-stone"}>
-              {value ? format(selected, "dd.MM.yyyy") : placeholder}
-            </span>
-            <CalendarDays className="w-4 h-4 text-stone" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            mode="single"
-            selected={selected}
-            onSelect={(date) =>
-              onChange(date ? format(date, "yyyy-MM-dd") : "")
-            }
-            fromDate={min ? new Date(`${min}T00:00:00`) : undefined}
-            disabled={(date) =>
-              min ? date < new Date(`${min}T00:00:00`) : false
-            }
-            initialFocus
-          />
-        </PopoverContent>
-      </Popover>
+      <div className="mt-1">
+        <DatePicker
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          min={min}
+          testId={testId}
+          className="h-9 min-w-[150px] text-xs font-normal"
+        />
+      </div>
     </div>
   );
 }

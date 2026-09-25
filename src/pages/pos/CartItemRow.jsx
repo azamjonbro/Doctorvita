@@ -40,38 +40,17 @@ const NumField = ({
   </label>
 );
 
-const CourseDatePicker = ({ value, onChange }) => {
-  const selected = value ? new Date(`${value}T00:00:00`) : undefined;
+import { DatePicker } from "@/components/ui/date-picker";
 
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          className="h-9 w-full justify-between bg-white text-left font-normal"
-        >
-          <span className={value ? "text-noir" : "text-stone"}>
-            {value
-              ? format(selected, "dd MMM yyyy", { locale: uz })
-              : "Kurs boshlanishi"}
-          </span>
-          <CalendarDays className="w-4 h-4 text-stone" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          locale={uz}
-          weekStartsOn={1}
-          selected={selected}
-          onSelect={(date) => onChange(date ? format(date, "yyyy-MM-dd") : "")}
-          initialFocus
-        />
-      </PopoverContent>
-    </Popover>
-  );
-};
+const CourseDatePicker = ({ value, onChange }) => (
+  <DatePicker
+    value={value}
+    onChange={onChange}
+    placeholder="Kurs boshlanishi"
+    className="h-9 bg-white mt-0.5 rounded-md text-xs font-normal"
+    showPresets={true}
+  />
+);
 
 /**
  * Savatdagi bitta qator: narx/miqdor/jami + dori uchun qabul tartibi bloki.
