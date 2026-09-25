@@ -36,6 +36,7 @@ import {
   Keyboard,
 } from "lucide-react";
 import FollowUpRulesForm from "@/components/FollowUpRulesForm";
+import { DatePicker } from "@/components/ui/date-picker";
 
 const empty = {
   name: "",
@@ -1341,14 +1342,14 @@ export default function AdminDashboard() {
                 />
               </Field>
               <Field label="Yaroqlilik muddati">
-                <Input
-                  data-testid="p-expiry"
-                  type="date"
+                <DatePicker
+                  testId="p-expiry"
                   className={FIELD_INPUT}
                   value={form.expiry_date}
-                  onChange={(e) =>
-                    setForm({ ...form, expiry_date: e.target.value })
+                  onChange={(val) =>
+                    setForm({ ...form, expiry_date: val })
                   }
+                  placeholder="Yaroqlilik muddati"
                 />
               </Field>
             </FormSection>

@@ -1,6 +1,7 @@
 import React from "react";
 import { PhoneCall, RotateCcw, Plus, X, AlertTriangle } from "lucide-react";
 import { fmtDate, todayISO, addDays } from "@/lib/posLogic";
+import { DatePicker } from "@/components/ui/date-picker";
 
 /**
  * Avtomatik hisoblangan qayta aloqa sanalari — har bir dori uchun alohida.
@@ -48,11 +49,19 @@ export default function FollowUpPreview({ entries, onEdit, onReset }) {
                                     <div className="text-noir">{f.stage_label}</div>
                                     <div className="text-[10px] text-stone line-clamp-1">{f.day_offset}-kun{f.purpose ? ` · ${f.purpose}` : ""}</div>
                                 </div>
-                                <input type="date" value={f.scheduled_date} min={today}
-                                       onChange={(e) => onEdit(uid, i, { scheduled_date: e.target.value })}
-                                       className={`h-8 rounded-md border px-2 text-xs bg-white text-noir ${f.manual_review ? "border-amber-300" : "border-line"}`}
-                                       data-testid={`pos-followup-date-${uid}-${i}`}/>
-                                <button type="button" onClick={() => onEdit(uid, i, null)} className="text-stone hover:text-rose" title="O'chirish">
+                                <div className="w-[145px] shrink-0">
+                                    <DatePicker
+                                        value={f.scheduled_date}
+                                        min={today}
+                                        onChange={(val) => onEdit(uid, i, { scheduled_date: val })}
+                                        className={`h-8 px-2 text-xs bg-white ${f.manual_review ? "border-amber-300 ring-1 ring-amber-300/40" : ""}`}
+                                        testId={`pos-followup-date-${uid}-${i}`}
+                                        clearable={false}
+                                        showPresets={false}
+                                        formatStr="dd.MM.yyyy"
+                                    />
+                                </div>
+                                <button type="button" onClick={() => onEdit(uid, i, null)} className="text-stone hover:text-rose p-1" title="O'chirish">
                                     <X className="w-3.5 h-3.5"/>
                                 </button>
                             </div>

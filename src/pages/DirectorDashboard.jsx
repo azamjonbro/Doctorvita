@@ -51,6 +51,7 @@ import {
 } from "recharts";
 import MapView from "@/components/MapView";
 import { formatCalendarDate } from "@/lib/posLogic";
+import { DatePicker } from "@/components/ui/date-picker";
 import "../index.css";
 
 export default function DirectorDashboard() {
@@ -623,18 +624,21 @@ export default function DirectorDashboard() {
               <div className="grid md:grid-cols-4 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs text-stone">Dan</Label>
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={salesDateFrom}
-                    onChange={(e) => setSalesDateFrom(e.target.value)}
+                    onChange={(val) => setSalesDateFrom(val)}
+                    placeholder="Boshlanish sanasi"
+                    clearable={true}
                   />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-stone">Gacha</Label>
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={salesDateTo}
-                    onChange={(e) => setSalesDateTo(e.target.value)}
+                    onChange={(val) => setSalesDateTo(val)}
+                    placeholder="Tugash sanasi"
+                    min={salesDateFrom}
+                    clearable={true}
                   />
                 </div>
                 <div className="space-y-1">
