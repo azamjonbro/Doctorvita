@@ -75,6 +75,7 @@ export default function DirectorDashboard() {
   const [salesWorker, setSalesWorker] = useState("all");
   const [salesBranch, setSalesBranch] = useState("all");
   const [salesProduct, setSalesProduct] = useState("all");
+  const [statsBranch, setStatsBranch] = useState("all");
   const [branchForm, setBranchForm] = useState({
     name: "",
     code: "",
@@ -91,7 +92,9 @@ export default function DirectorDashboard() {
 
   const load = useCallback(async () => {
     const [s, u, w, b, o, sa, at, lp, al] = await Promise.all([
-      api.get("/stats/overview"),
+      api.get("/stats/overview", {
+        params: statsBranch === "all" ? {} : { branch_id: statsBranch },
+      }),
       api.get("/users"),
       api.get("/users/workers"),
       api.get("/branches"),
@@ -110,7 +113,7 @@ export default function DirectorDashboard() {
     setAttendance(at.data);
     setLastPurch(lp.data);
     setAuditLogs(al.data);
-  }, []);
+  }, [statsBranch]);
 
   useEffect(() => {
     load();
@@ -147,6 +150,25 @@ export default function DirectorDashboard() {
       await api.post("/branches", branchForm);
       toast.success("Filial qo'shildi");
       setBranchForm({ name: "", code: "", address: "" });
+      await load();
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail) || e.message);
+    }
+  };
+
+  const toggleBranch = async (branch) => {
+    try {
+      await api.put(`/branches/${branch.id}`, {
+        name: branch.name,
+        code: branch.code,
+        address: branch.address,
+        active: branch.active === false,
+      });
+      toast.success(
+        branch.active === false
+          ? "Filial ishga tushirildi"
+          : "Filial vaqtincha to'xtatildi",
+      );
       await load();
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail) || e.message);
@@ -290,6 +312,21 @@ export default function DirectorDashboard() {
       <main className="max-w-7xl mx-auto px-6 md:px-10 py-8 space-y-8">
         {stats && (
           <>
+            <div className="flex items-center justify-end gap-3">
+              <Label className="text-sm text-stone">Statistika filiali</Label>
+              <select
+                value={statsBranch}
+                onChange={(e) => setStatsBranch(e.target.value)}
+                className="h-10 rounded-md border border-line bg-white px-3 text-sm text-noir"
+              >
+                <option value="all">Barcha filiallar</option>
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="grid md:grid-cols-4 gap-4">
               <Stat
                 icon={<ShoppingBag className="w-4 h-4" />}
@@ -887,14 +924,32 @@ export default function DirectorDashboard() {
                         {branch.address || "Manzil kiritilmagan"}
                       </div>
                     </div>
-                    <span className="text-xs bg-cream text-stone rounded-full px-2 py-1">
-                      {
-                        workers.filter(
-                          (worker) => worker.branch_id === branch.id,
-                        ).length
-                      }{" "}
-                      hodim
-                    </span>
+                    <div className="flex flex-col items-end gap-2">
+                      <span
+                        className={`text-xs rounded-full px-2 py-1 ${branch.active === false ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}
+                      >
+                        {branch.active === false ? "To'xtatilgan" : "Faol"}
+                      </span>
+                      <span className="text-xs bg-cream text-stone rounded-full px-2 py-1">
+                        {
+                          workers.filter(
+                            (worker) => worker.branch_id === branch.id,
+                          ).length
+                        }{" "}
+                        hodim
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toggleBranch(branch)}
+                        className="rounded-full"
+                      >
+                        {branch.active === false
+                          ? "Ishga tushirish"
+                          : "To'xtatish"}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}

@@ -53,6 +53,7 @@ const empty = {
   expiry_date: "",
   sku: "",
   units_per_package: 0,
+  all_branches: false,
 };
 
 export default function AdminDashboard() {
@@ -149,6 +150,7 @@ export default function AdminDashboard() {
       expiry_date: p.expiry_date || "",
       sku: p.sku || "",
       units_per_package: Number(p.units_per_package) || 0,
+      all_branches: Boolean(p.all_branches),
     });
     setOpen(true);
   };
@@ -170,6 +172,7 @@ export default function AdminDashboard() {
       expiry_date: p.expiry_date || "",
       sku: p.sku || "",
       units_per_package: Number(p.units_per_package) || 0,
+      all_branches: Boolean(p.all_branches),
     };
     setEditing(null);
     setScanOrigin({ ...p, _snapshot: snapshot });
@@ -1365,6 +1368,18 @@ export default function AdminDashboard() {
                   placeholder="Yaroqlilik muddati"
                 />
               </Field>
+              {user?.role === "director" && (
+                <label className="md:col-span-2 flex items-center gap-2 text-sm text-noir rounded-lg border border-line bg-cream px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(form.all_branches)}
+                    onChange={(e) =>
+                      setForm({ ...form, all_branches: e.target.checked })
+                    }
+                  />
+                  Barcha filiallarga ko'rsatish
+                </label>
+              )}
             </FormSection>
 
             {/* ---- Rasm ---- */}
