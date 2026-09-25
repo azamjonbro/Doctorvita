@@ -58,6 +58,7 @@ export default function CustomerPanel({
   const [showVitals, setShowVitals] = useState(false);
   const boxRef = useRef(null);
   const timer = useRef(null);
+  const closeTimer = useRef(null);
   const seq = useRef(0);
 
   const set = (patch) => onChange({ ...customer, ...patch });
@@ -65,6 +66,7 @@ export default function CustomerPanel({
   // Ism / familiya / telefon yozilganda — typeahead (faqat mijoz hali tanlanmagan bo'lsa)
   const search = (term) => {
     clearTimeout(timer.current);
+    clearTimeout(closeTimer.current);
     if (!term || term.trim().length < 2) {
       setSuggestions([]);
       setOpen(false);
@@ -79,6 +81,9 @@ export default function CustomerPanel({
         if (my !== seq.current) return;
         setSuggestions(data);
         setOpen(true);
+        if (!data.length) {
+          closeTimer.current = setTimeout(() => setOpen(false), 1500);
+        }
       } catch {
         /* ignore */
       }
@@ -87,7 +92,20 @@ export default function CustomerPanel({
 
   const onField = (field, value) => {
     set({ [field]: value });
-    if (!customer.id) search(value);
+    if (!customer.id && (field === "first_name" || field === "phone")) {
+      search(value);
+    } else if (field !== "first_name" && field !== "phone") {
+      clearTimeout(closeTimer.current);
+      setOpen(false);
+    }
+  };
+
+  const handleFocusCapture = (event) => {
+    const target = event.target;
+    if (!target.matches('[data-customer-search="true"]')) {
+      clearTimeout(closeTimer.current);
+      setOpen(false);
+    }
   };
 
   // Telefon o'zgarganda — bazada shu raqamli boshqa mijoz bor-yo'qligini tekshirish
@@ -175,6 +193,7 @@ export default function CustomerPanel({
   return (
     <div
       ref={boxRef}
+      onFocusCapture={handleFocusCapture}
       className="bg-white border border-line rounded-2xl p-4 space-y-3 relative"
       data-testid="pos-customer"
     >
@@ -210,6 +229,7 @@ export default function CustomerPanel({
           value={customer.first_name}
           onChange={(e) => onField("first_name", e.target.value)}
           onFocus={() => suggestions.length && setOpen(true)}
+          data-customer-search="true"
           className="h-10 bg-white"
           data-testid="pos-c-first"
         />
@@ -217,7 +237,6 @@ export default function CustomerPanel({
           placeholder="Familiyasi"
           value={customer.last_name}
           onChange={(e) => onField("last_name", e.target.value)}
-          onFocus={() => suggestions.length && setOpen(true)}
           className="h-10 bg-white"
           data-testid="pos-c-last"
         />
@@ -228,6 +247,7 @@ export default function CustomerPanel({
             value={customer.phone}
             onChange={(e) => onField("phone", e.target.value)}
             onFocus={() => suggestions.length && setOpen(true)}
+            data-customer-search="true"
             className="h-10 pl-8 bg-white"
             inputMode="tel"
             data-testid="pos-c-phone"

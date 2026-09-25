@@ -53,7 +53,7 @@ const empty = {
   expiry_date: "",
   sku: "",
   units_per_package: 0,
-  all_branches: false,
+  all_branches: true,
 };
 
 export default function AdminDashboard() {
@@ -150,7 +150,7 @@ export default function AdminDashboard() {
       expiry_date: p.expiry_date || "",
       sku: p.sku || "",
       units_per_package: Number(p.units_per_package) || 0,
-      all_branches: Boolean(p.all_branches),
+      all_branches: p.all_branches !== false,
     });
     setOpen(true);
   };
@@ -172,7 +172,7 @@ export default function AdminDashboard() {
       expiry_date: p.expiry_date || "",
       sku: p.sku || "",
       units_per_package: Number(p.units_per_package) || 0,
-      all_branches: Boolean(p.all_branches),
+      all_branches: p.all_branches !== false,
     };
     setEditing(null);
     setScanOrigin({ ...p, _snapshot: snapshot });
