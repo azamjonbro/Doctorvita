@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import api from "@/lib/api";
+import api, { safeImageUrl } from "@/lib/api";
 import { BookOpen, Calendar, Sparkles } from "lucide-react";
 import { formatCalendarDate } from "@/lib/posLogic";
 
@@ -63,8 +63,12 @@ export default function News() {
                   {featured.image_url && (
                     <div className="aspect-[16/10] md:aspect-auto overflow-hidden bg-cream">
                       <img
-                        src={featured.image_url}
+                        src={safeImageUrl(featured.image_url)}
                         alt={featured.title}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = safeImageUrl(null);
+                        }}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                       />
                     </div>
@@ -98,8 +102,12 @@ export default function News() {
                     {n.image_url && (
                       <div className="aspect-[16/10] overflow-hidden bg-cream">
                         <img
-                          src={n.image_url}
+                          src={safeImageUrl(n.image_url)}
                           alt={n.title}
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = safeImageUrl(null);
+                          }}
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                         />
                       </div>
