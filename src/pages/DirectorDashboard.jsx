@@ -102,9 +102,11 @@ export default function DirectorDashboard() {
       api.get("/branches"),
       api.get("/orders"),
       api.get("/sales/all"),
-      api.get("/sales/product-summary", {
-        params: salesBranch === "all" ? {} : { branch_id: salesBranch },
-      }),
+      api
+        .get("/sales/product-summary", {
+          params: salesBranch === "all" ? {} : { branch_id: salesBranch },
+        })
+        .catch(() => ({ data: [] })),
       api.get("/attendance"),
       api.get("/stats/customer-last-purchase"),
       api.get("/products/audit-logs").catch(() => ({ data: [] })),
