@@ -1,7 +1,10 @@
 import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
-export const API_BASE = `https://doctor.sds-max.uz/api`;
+const BACKEND_URL =
+    (import.meta.env.VITE_BACKEND_URL || import.meta.env.REACT_APP_BACKEND_URL || "https://doctor.sds-max.uz")
+        .replace(/\/$/, "");
+
+export const API_BASE = `${BACKEND_URL}/api`;
 
 const api = axios.create({
     baseURL: API_BASE,
