@@ -34,6 +34,7 @@ import {
   Wallet,
   ArrowUpRight,
   ClipboardList,
+  Building2,
 } from "lucide-react";
 import {
   BarChart,
@@ -59,6 +60,7 @@ export default function DirectorDashboard() {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [workers, setWorkers] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [orders, setOrders] = useState([]);
   const [sales, setSales] = useState([]);
   const [attendance, setAttendance] = useState([]);
@@ -69,20 +71,28 @@ export default function DirectorDashboard() {
   const [salesDateFrom, setSalesDateFrom] = useState("");
   const [salesDateTo, setSalesDateTo] = useState("");
   const [salesWorker, setSalesWorker] = useState("all");
+  const [salesBranch, setSalesBranch] = useState("all");
   const [salesProduct, setSalesProduct] = useState("all");
+  const [branchForm, setBranchForm] = useState({
+    name: "",
+    code: "",
+    address: "",
+  });
   const [wForm, setWForm] = useState({
     name: "",
     surname: "",
     phone: "",
     email: "",
     password: "",
+    branch_id: "",
   });
 
   const load = useCallback(async () => {
-    const [s, u, w, o, sa, at, lp, al] = await Promise.all([
+    const [s, u, w, b, o, sa, at, lp, al] = await Promise.all([
       api.get("/stats/overview"),
       api.get("/users"),
       api.get("/users/workers"),
+      api.get("/branches"),
       api.get("/orders"),
       api.get("/sales/all"),
       api.get("/attendance"),
@@ -92,6 +102,7 @@ export default function DirectorDashboard() {
     setStats(s.data);
     setUsers(u.data);
     setWorkers(w.data);
+    setBranches(b.data);
     setOrders(o.data);
     setSales(sa.data);
     setAttendance(at.data);
@@ -108,10 +119,32 @@ export default function DirectorDashboard() {
   const addWorker = async (e) => {
     e.preventDefault();
     try {
-      await api.post("/users/workers", wForm);
+      await api.post("/users/workers", {
+        ...wForm,
+        branch_id: wForm.branch_id || null,
+      });
       toast.success("Yangi sotuvchi qo'shildi");
       setOpenWorker(false);
-      setWForm({ name: "", surname: "", phone: "", email: "", password: "" });
+      setWForm({
+        name: "",
+        surname: "",
+        phone: "",
+        email: "",
+        password: "",
+        branch_id: "",
+      });
+      await load();
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail) || e.message);
+    }
+  };
+
+  const addBranch = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post("/branches", branchForm);
+      toast.success("Filial qo'shildi");
+      setBranchForm({ name: "", code: "", address: "" });
       await load();
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail) || e.message);
@@ -192,10 +225,12 @@ export default function DirectorDashboard() {
 
       const matchesWorker =
         salesWorker === "all" || s.worker_name === salesWorker;
+      const matchesBranch =
+        salesBranch === "all" || s.branch_id === salesBranch;
       const matchesProduct =
         salesProduct === "all" || s.product_name === salesProduct;
 
-      return matchesRange && matchesWorker && matchesProduct;
+      return matchesRange && matchesWorker && matchesBranch && matchesProduct;
     });
   }, [
     sales,
@@ -203,6 +238,7 @@ export default function DirectorDashboard() {
     salesDateFrom,
     salesDateTo,
     salesWorker,
+    salesBranch,
     salesProduct,
   ]);
 
@@ -229,6 +265,7 @@ export default function DirectorDashboard() {
     setSalesDateFrom("");
     setSalesDateTo("");
     setSalesWorker("all");
+    setSalesBranch("all");
     setSalesProduct("all");
   };
 
@@ -318,6 +355,9 @@ export default function DirectorDashboard() {
             </TabsTrigger>
             <TabsTrigger value="sales" data-testid="d-tab-sales">
               Sotuvlar
+            </TabsTrigger>
+            <TabsTrigger value="branches" data-testid="d-tab-branches">
+              <Building2 className="w-3.5 h-3.5 mr-1" /> Filiallar
             </TabsTrigger>
             <TabsTrigger value="workers" data-testid="d-tab-workers">
               Sotuvchilar
@@ -621,7 +661,7 @@ export default function DirectorDashboard() {
                 </Button>
               </div>
 
-              <div className="grid md:grid-cols-4 gap-3">
+              <div className="grid md:grid-cols-5 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs text-stone">Dan</Label>
                   <DatePicker
@@ -640,6 +680,21 @@ export default function DirectorDashboard() {
                     min={salesDateFrom}
                     clearable={true}
                   />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-stone">Filial</Label>
+                  <select
+                    value={salesBranch}
+                    onChange={(e) => setSalesBranch(e.target.value)}
+                    className="h-10 w-full rounded-md border border-line bg-white px-3 text-sm text-noir"
+                  >
+                    <option value="all">Barcha filiallar</option>
+                    {branches.map((branch) => (
+                      <option key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-stone">Xodim</Label>
@@ -750,6 +805,99 @@ export default function DirectorDashboard() {
                   )}
                 </TableBody>
               </Table>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="branches" className="mt-6 space-y-4">
+            <div className="bg-white rounded-2xl border border-line p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-serif text-xl text-noir">
+                    Filial yaratish
+                  </h3>
+                  <p className="text-sm text-stone">
+                    Hodimlarni keyin filialga biriktirasiz.
+                  </p>
+                </div>
+                <Building2 className="w-5 h-5 text-stone" />
+              </div>
+              <form
+                onSubmit={addBranch}
+                className="grid md:grid-cols-4 gap-3 items-end"
+              >
+                <div>
+                  <Label>Nomi</Label>
+                  <Input
+                    value={branchForm.name}
+                    onChange={(e) =>
+                      setBranchForm({ ...branchForm, name: e.target.value })
+                    }
+                    placeholder="Masalan: Chilonzor filiali"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label>Kodi</Label>
+                  <Input
+                    value={branchForm.code}
+                    onChange={(e) =>
+                      setBranchForm({ ...branchForm, code: e.target.value })
+                    }
+                    placeholder="CH-01"
+                  />
+                </div>
+                <div>
+                  <Label>Manzil</Label>
+                  <Input
+                    value={branchForm.address}
+                    onChange={(e) =>
+                      setBranchForm({ ...branchForm, address: e.target.value })
+                    }
+                    placeholder="Toshkent shahri"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  className="bg-noir text-ivory hover:bg-rose rounded-full"
+                >
+                  <Plus className="w-4 h-4 mr-1" /> Filial qo'shish
+                </Button>
+              </form>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              {branches.map((branch) => (
+                <div
+                  key={branch.id}
+                  className="bg-white rounded-2xl border border-line p-5"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-serif text-xl text-noir">
+                        {branch.name}
+                      </div>
+                      <div className="text-sm text-stone">
+                        Kod: {branch.code || "—"}
+                      </div>
+                      <div className="text-sm text-stone">
+                        {branch.address || "Manzil kiritilmagan"}
+                      </div>
+                    </div>
+                    <span className="text-xs bg-cream text-stone rounded-full px-2 py-1">
+                      {
+                        workers.filter(
+                          (worker) => worker.branch_id === branch.id,
+                        ).length
+                      }{" "}
+                      hodim
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {branches.length === 0 && (
+                <div className="text-stone bg-cream rounded-xl p-6 text-center md:col-span-2">
+                  Hali filiallar qo'shilmagan
+                </div>
+              )}
             </div>
           </TabsContent>
 
@@ -1042,6 +1190,24 @@ export default function DirectorDashboard() {
                 value={wForm.phone}
                 onChange={(e) => setWForm({ ...wForm, phone: e.target.value })}
               />
+            </div>
+            <div>
+              <Label>Filial</Label>
+              <select
+                value={wForm.branch_id}
+                onChange={(e) =>
+                  setWForm({ ...wForm, branch_id: e.target.value })
+                }
+                className="h-10 w-full rounded-md border border-line bg-white px-3 text-sm text-noir"
+                required
+              >
+                <option value="">Filialni tanlang</option>
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <Label>Email</Label>
