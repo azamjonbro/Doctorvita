@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import FollowUpRulesForm from "@/components/FollowUpRulesForm";
 import { DatePicker } from "@/components/ui/date-picker";
+import { expiryStatus } from "@/lib/posLogic";
 
 const empty = {
   name: "",
@@ -635,6 +636,7 @@ export default function AdminDashboard() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {products.map((p) => {
                 const finalP = effectivePrice(p);
+                const expiry = expiryStatus(p.expiry_date);
                 const hasDisc = Number(p.discount_percent || 0) > 0;
                 const profit = finalP - Number(p.cost_price || 0);
                 const isVariant = !!p.parent_barcode;
@@ -724,8 +726,13 @@ export default function AdminDashboard() {
                         )}
                       </div>
                       {p.expiry_date && (
-                        <div className="text-xs text-stone flex items-center gap-1">
-                          <Calendar className="w-3 h-3" /> {p.expiry_date}
+                        <div
+                          className={`text-xs flex items-center justify-between gap-2 rounded-md px-2 py-1 ${expiry.className}`}
+                        >
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" /> {p.expiry_date}
+                          </span>
+                          <span>{expiry.label}</span>
                         </div>
                       )}
                       <div className="flex gap-2 mt-3">
@@ -1346,9 +1353,7 @@ export default function AdminDashboard() {
                   testId="p-expiry"
                   className={FIELD_INPUT}
                   value={form.expiry_date}
-                  onChange={(val) =>
-                    setForm({ ...form, expiry_date: val })
-                  }
+                  onChange={(val) => setForm({ ...form, expiry_date: val })}
                   placeholder="Yaroqlilik muddati"
                 />
               </Field>

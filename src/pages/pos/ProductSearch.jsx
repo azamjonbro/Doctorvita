@@ -3,7 +3,7 @@ import api, { safeImageUrl } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Camera, Loader2, Package, Plus } from "lucide-react";
-import { fmtMoney } from "@/lib/posLogic";
+import { expiryStatus, fmtMoney } from "@/lib/posLogic";
 
 /**
  * Bitta qidiruv maydoni: nom / SKU / shtrix-kod.
@@ -129,6 +129,7 @@ export default function ProductSearch({ onPick, onOpenCamera, inputRef }) {
           {results.map((p, i) => {
             const stock = Number(p.stock ?? 0);
             const out = stock <= 0;
+            const expiry = expiryStatus(p.expiry_date);
             return (
               <button
                 key={p.id}
@@ -164,6 +165,11 @@ export default function ProductSearch({ onPick, onOpenCamera, inputRef }) {
                     {p.barcode && <span>Kod: {p.barcode}</span>}
                     {p.units_per_package > 1 && (
                       <span>· {p.units_per_package} dona/qadoq</span>
+                    )}
+                    {p.expiry_date && (
+                      <span className={`rounded px-1.5 ${expiry.className}`}>
+                        {expiry.label}
+                      </span>
                     )}
                   </div>
                 </div>

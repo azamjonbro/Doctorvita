@@ -35,6 +35,7 @@ import {
   ArrowUpRight,
   ClipboardList,
   Building2,
+  AlertCircle,
 } from "lucide-react";
 import {
   BarChart,
@@ -51,7 +52,7 @@ import {
   Area,
 } from "recharts";
 import MapView from "@/components/MapView";
-import { formatCalendarDate } from "@/lib/posLogic";
+import { expiryStatus, formatCalendarDate } from "@/lib/posLogic";
 import { DatePicker } from "@/components/ui/date-picker";
 import "../index.css";
 
@@ -61,6 +62,7 @@ export default function DirectorDashboard() {
   const [users, setUsers] = useState([]);
   const [workers, setWorkers] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [urgentProducts, setUrgentProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [sales, setSales] = useState([]);
   const [attendance, setAttendance] = useState([]);
@@ -88,11 +90,12 @@ export default function DirectorDashboard() {
   });
 
   const load = useCallback(async () => {
-    const [s, u, w, b, o, sa, at, lp, al] = await Promise.all([
+    const [s, u, w, b, p, o, sa, at, lp, al] = await Promise.all([
       api.get("/stats/overview"),
       api.get("/users"),
       api.get("/users/workers"),
       api.get("/branches"),
+      api.get("/products", { params: { limit: 500 } }),
       api.get("/orders"),
       api.get("/sales/all"),
       api.get("/attendance"),
@@ -103,6 +106,12 @@ export default function DirectorDashboard() {
     setUsers(u.data);
     setWorkers(w.data);
     setBranches(b.data);
+    const productItems = Array.isArray(p.data) ? p.data : p.data?.items || [];
+    setUrgentProducts(
+      productItems.filter(
+        (product) => expiryStatus(product.expiry_date).key === "red",
+      ),
+    );
     setOrders(o.data);
     setSales(sa.data);
     setAttendance(at.data);
@@ -343,6 +352,25 @@ export default function DirectorDashboard() {
               />
             </div>
           </>
+        )}
+
+        {urgentProducts.length > 0 && (
+          <div className="rounded-2xl border border-red-300 bg-red-50 p-4">
+            <div className="flex items-center gap-2 text-red-800 font-semibold">
+              <AlertCircle className="w-4 h-4" /> Qip-qizil yaroqlilik
+              ogohlantirishi
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {urgentProducts.map((product) => (
+                <span
+                  key={product.id}
+                  className="rounded-lg bg-red-600 text-white px-3 py-2 text-sm"
+                >
+                  {product.name} · {product.expiry_date}
+                </span>
+              ))}
+            </div>
+          </div>
         )}
 
         <Tabs defaultValue="overview">

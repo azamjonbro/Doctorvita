@@ -58,6 +58,28 @@ export const formatCalendarDate = (value) => {
     return `${date.getUTCDate()} ${MONTH_SHORT_UZ[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
 };
 
+const addCalendarMonths = (date, months) => {
+    const next = new Date(date);
+    next.setMonth(next.getMonth() + months);
+    return next;
+};
+
+export const expiryStatus = (value, now = new Date()) => {
+    if (!value) return { key: "unknown", label: "Muddat kiritilmagan", className: "bg-slate-100 text-slate-600" };
+    const expiry = new Date(`${String(value).slice(0, 10)}T23:59:59`);
+    if (Number.isNaN(expiry.getTime())) return { key: "unknown", label: "Muddat noto'g'ri", className: "bg-slate-100 text-slate-600" };
+    if (expiry <= now || expiry <= addCalendarMonths(now, 3)) {
+        return { key: "red", label: "3 oydan kam", className: "bg-red-600 text-white" };
+    }
+    if (expiry <= addCalendarMonths(now, 6)) {
+        return { key: "light-red", label: "3-6 oy", className: "bg-red-200 text-red-900" };
+    }
+    if (expiry <= addCalendarMonths(now, 12)) {
+        return { key: "yellow", label: "6-12 oy", className: "bg-yellow-200 text-yellow-900" };
+    }
+    return { key: "green", label: "1 yildan ko'p", className: "bg-green-200 text-green-900" };
+};
+
 export const phoneTail = (phone) => {
     const digits = String(phone || "").replace(/\D/g, "");
     return digits.slice(-4);

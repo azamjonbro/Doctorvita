@@ -24,7 +24,12 @@ import {
 import SalesScreen from "@/pages/pos/SalesScreen";
 import FollowUpsPanel from "@/pages/pos/FollowUpsPanel";
 import { printPosReceipt } from "@/pages/pos/ReceiptDialog";
-import { fmtMoney, fmtDate, formatCalendarDate } from "@/lib/posLogic";
+import {
+  expiryStatus,
+  fmtMoney,
+  fmtDate,
+  formatCalendarDate,
+} from "@/lib/posLogic";
 
 export default function WorkerDashboard() {
   const { user, logout } = useAuth();
@@ -32,23 +37,33 @@ export default function WorkerDashboard() {
   const [todaySales, setTodaySales] = useState([]); // bugungi POS savdolari
   const [attendance, setAttendance] = useState([]);
   const [fuSummary, setFuSummary] = useState({ today: 0, overdue: 0 });
+  const [urgentProducts, setUrgentProducts] = useState([]);
   const [customersFilter, setCustomersFilter] = useState("today"); // today | month | all
   const [tab, setTab] = useState("pos");
   const notifiedRef = useRef(false);
 
   const load = useCallback(async () => {
-    const [s, a, t, f] = await Promise.all([
+    const [s, a, t, f, p] = await Promise.all([
       api.get("/sales/mine").catch(() => ({ data: [] })),
       api.get("/attendance/mine").catch(() => ({ data: [] })),
       api.get("/pos/sales").catch(() => ({ data: [] })),
       api
         .get("/followups/summary")
         .catch(() => ({ data: { today: 0, overdue: 0 } })),
+      api
+        .get("/products", { params: { limit: 500 } })
+        .catch(() => ({ data: [] })),
     ]);
     setSales(s.data);
     setAttendance(a.data);
     setTodaySales(t.data);
     setFuSummary(f.data);
+    const productItems = Array.isArray(p.data) ? p.data : p.data?.items || [];
+    setUrgentProducts(
+      productItems.filter(
+        (product) => expiryStatus(product.expiry_date).key === "red",
+      ),
+    );
     // Dastur ichidagi bildirishnoma: bugungi / kechikkan vazifalar
     if (!notifiedRef.current && (f.data.today > 0 || f.data.overdue > 0)) {
       notifiedRef.current = true;
@@ -178,6 +193,27 @@ export default function WorkerDashboard() {
       </header>
 
       <main className="max-w-[1400px] mx-auto px-4 md:px-8 py-6 space-y-6">
+        {urgentProducts.length > 0 && (
+          <div className="rounded-2xl border border-red-300 bg-red-50 p-4">
+            <div className="flex items-center gap-2 text-red-800 font-semibold">
+              <AlertCircle className="w-4 h-4" /> Yaroqlilik muddati juda yaqin
+              mahsulotlar
+            </div>
+            <div className="mt-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {urgentProducts.map((product) => (
+                <div
+                  key={product.id}
+                  className="rounded-lg bg-red-600 text-white px-3 py-2 text-sm flex items-center justify-between gap-2"
+                >
+                  <span className="truncate">{product.name}</span>
+                  <span className="font-mono text-xs shrink-0">
+                    {product.expiry_date}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="bg-cream flex-wrap h-auto">
             <TabsTrigger value="pos" data-testid="tab-register">
