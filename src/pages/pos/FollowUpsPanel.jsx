@@ -4,12 +4,7 @@ import api, { formatApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -46,8 +41,6 @@ const STATUS_STYLE = {
   postponed: "bg-sky-50 text-sky-700 border-sky-200",
   cancelled: "bg-gray-100 text-gray-500",
 };
-
-import { DatePicker } from "@/components/ui/date-picker";
 
 function DatePickerField({
   label,

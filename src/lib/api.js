@@ -4,9 +4,17 @@ const LOCAL_BACKEND_URL = "http://127.0.0.1:8000";
 const PROD_BACKEND_URL = "https://doctor.sds-max.uz";
 const isLocalDev = typeof window !== "undefined" && ["localhost", "127.0.0.1", "0.0.0.0"].includes(window.location.hostname);
 
-const BACKEND_URL =
-    (import.meta.env.VITE_BACKEND_URL || import.meta.env.REACT_APP_BACKEND_URL || (isLocalDev ? LOCAL_BACKEND_URL : PROD_BACKEND_URL))
-        .replace(/\/$/, "");
+const configuredBackend = (import.meta.env.VITE_BACKEND_URL || import.meta.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
+
+const BACKEND_URL = (() => {
+    if (isLocalDev) {
+        return configuredBackend && configuredBackend.includes("localhost") ? configuredBackend : LOCAL_BACKEND_URL;
+    }
+    if (configuredBackend && !configuredBackend.includes("localhost") && !configuredBackend.includes("127.0.0.1")) {
+        return configuredBackend;
+    }
+    return PROD_BACKEND_URL;
+})();
 
 export const API_BASE = `${BACKEND_URL}/api`;
 export const DEFAULT_PRODUCT_IMAGE = "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=900&q=80";

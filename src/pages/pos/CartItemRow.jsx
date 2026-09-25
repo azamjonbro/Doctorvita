@@ -3,12 +3,7 @@ import { format } from "date-fns";
 import { uz } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Plus,
   Minus,
@@ -39,8 +34,6 @@ const NumField = ({
     />
   </label>
 );
-
-import { DatePicker } from "@/components/ui/date-picker";
 
 const CourseDatePicker = ({ value, onChange }) => (
   <DatePicker
