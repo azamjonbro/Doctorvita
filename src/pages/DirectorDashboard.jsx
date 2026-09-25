@@ -204,9 +204,16 @@ export default function DirectorDashboard() {
   const uniqueWorkers = useMemo(
     () =>
       Array.from(
-        new Set(sales.map((s) => s.worker_name).filter(Boolean)),
+        new Set(
+          [
+            ...workers.map((worker) =>
+              `${worker.name || ""} ${worker.surname || ""}`.trim(),
+            ),
+            ...sales.map((s) => s.worker_name),
+          ].filter(Boolean),
+        ),
       ).sort(),
-    [sales],
+    [sales, workers],
   );
 
   const uniqueProducts = useMemo(
