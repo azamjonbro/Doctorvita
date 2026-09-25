@@ -38,6 +38,7 @@ import {
 import FollowUpRulesForm from "@/components/FollowUpRulesForm";
 import { DatePicker } from "@/components/ui/date-picker";
 import { expiryStatus } from "@/lib/posLogic";
+import ExpiryProductsPanel from "@/components/ExpiryProductsPanel";
 
 const empty = {
   name: "",
@@ -469,6 +470,9 @@ export default function AdminDashboard() {
             <TabsTrigger value="products" data-testid="a-tab-products">
               Mahsulotlar ({products.length})
             </TabsTrigger>
+            <TabsTrigger value="expiry" data-testid="a-tab-expiry">
+              Yaroqlilik
+            </TabsTrigger>
             <TabsTrigger value="deleted" data-testid="a-tab-deleted">
               O'chirilganlar ({deletedProducts.length})
             </TabsTrigger>
@@ -490,6 +494,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="settings" className="mt-6">
             <FollowUpRulesForm />
+          </TabsContent>
+
+          <TabsContent value="expiry" className="mt-6">
+            <ExpiryProductsPanel role={user?.role || "admin"} />
           </TabsContent>
 
           <TabsContent value="products" className="mt-6 space-y-4">

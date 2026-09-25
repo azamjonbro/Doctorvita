@@ -53,6 +53,7 @@ import {
 } from "recharts";
 import MapView from "@/components/MapView";
 import { expiryStatus, formatCalendarDate } from "@/lib/posLogic";
+import ExpiryProductsPanel from "@/components/ExpiryProductsPanel";
 import { DatePicker } from "@/components/ui/date-picker";
 import "../index.css";
 
@@ -386,6 +387,9 @@ export default function DirectorDashboard() {
             </TabsTrigger>
             <TabsTrigger value="branches" data-testid="d-tab-branches">
               <Building2 className="w-3.5 h-3.5 mr-1" /> Filiallar
+            </TabsTrigger>
+            <TabsTrigger value="expiry" data-testid="d-tab-expiry">
+              Yaroqlilik
             </TabsTrigger>
             <TabsTrigger value="workers" data-testid="d-tab-workers">
               Sotuvchilar
@@ -927,6 +931,10 @@ export default function DirectorDashboard() {
                 </div>
               )}
             </div>
+          </TabsContent>
+
+          <TabsContent value="expiry" className="mt-6">
+            <ExpiryProductsPanel role="director" />
           </TabsContent>
 
           <TabsContent value="workers" className="mt-6 space-y-4">

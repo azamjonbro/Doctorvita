@@ -30,6 +30,7 @@ import {
   fmtDate,
   formatCalendarDate,
 } from "@/lib/posLogic";
+import ExpiryProductsPanel from "@/components/ExpiryProductsPanel";
 
 export default function WorkerDashboard() {
   const { user, logout } = useAuth();
@@ -229,6 +230,9 @@ export default function WorkerDashboard() {
                 </span>
               )}
             </TabsTrigger>
+            <TabsTrigger value="expiry" data-testid="tab-expiry">
+              Yaroqlilik
+            </TabsTrigger>
             <TabsTrigger value="today" data-testid="tab-today">
               Bugungi savdolar ({todaySales.length})
             </TabsTrigger>
@@ -246,6 +250,10 @@ export default function WorkerDashboard() {
           {/* ============ SOTUV (POS) ============ */}
           <TabsContent value="pos" className="mt-5">
             <SalesScreen user={user} onCompleted={load} />
+          </TabsContent>
+
+          <TabsContent value="expiry" className="mt-5">
+            <ExpiryProductsPanel role="worker" />
           </TabsContent>
 
           {/* ============ QAYTA ALOQA ============ */}
