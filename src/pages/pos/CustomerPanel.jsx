@@ -371,6 +371,7 @@ export default function CustomerPanel({
                 </div>
               </div>
             </div>
+            <label className='text-[11px] text-stone'>Allergiya</label>
             <Input
               placeholder="Allergiyalar (masalan: penitsillin, asal)"
               value={customer.allergies}
@@ -378,6 +379,7 @@ export default function CustomerPanel({
               className="h-9 bg-white"
               data-testid="pos-c-allergies"
             />
+            <label className='text-[11px] text-stone'>Surunkali kasallik</label>
             <Input
               placeholder="Surunkali kasallik / doimiy ichadigan dorilar"
               value={customer.conditions}
