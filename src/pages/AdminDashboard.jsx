@@ -44,6 +44,7 @@ import FollowUpRulesForm from "@/components/FollowUpRulesForm";
 import { DatePicker } from "@/components/ui/date-picker";
 import { expiryStatus } from "@/lib/posLogic";
 import ExpiryProductsPanel from "@/components/ExpiryProductsPanel";
+import InventoryValueReport from "@/components/InventoryValueReport";
 import SalesScreen from "@/pages/pos/SalesScreen";
 
 const empty = {
@@ -720,10 +721,17 @@ export default function AdminDashboard() {
                 </span>
               )}
             </TabsTrigger>
+            <TabsTrigger value="reports" data-testid="a-tab-reports">
+              Hisobot
+            </TabsTrigger>
             <TabsTrigger value="settings" data-testid="a-tab-settings">
               Sozlamalar
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="reports" className="mt-6">
+            <InventoryValueReport user={user} />
+          </TabsContent>
 
           <TabsContent value="settings" className="mt-6">
             <FollowUpRulesForm />

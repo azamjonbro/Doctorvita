@@ -55,6 +55,7 @@ import {
 import MapView from "@/components/MapView";
 import { formatCalendarDate } from "@/lib/posLogic";
 import ExpiryProductsPanel from "@/components/ExpiryProductsPanel";
+import InventoryValueReport from "@/components/InventoryValueReport";
 import SalesScreen from "@/pages/pos/SalesScreen";
 import { DatePicker } from "@/components/ui/date-picker";
 import "../index.css";
@@ -1338,7 +1339,8 @@ export default function DirectorDashboard() {
             </div>
           </TabsContent>
 
-          <TabsContent value="reports" className="mt-6">
+          <TabsContent value="reports" className="mt-6 space-y-6">
+            <InventoryValueReport user={user} />
             <ReportPanel />
           </TabsContent>
 
