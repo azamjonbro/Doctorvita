@@ -36,6 +36,9 @@ import {
   Keyboard,
   FileSpreadsheet,
   Building2,
+  Loader2,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import FollowUpRulesForm from "@/components/FollowUpRulesForm";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -88,6 +91,8 @@ export default function AdminDashboard() {
   const [stockPreview, setStockPreview] = useState(null);
   const [stockBusy, setStockBusy] = useState(false);
   const [stockError, setStockError] = useState("");
+  // Fonda ishlayotgan Excel yuklashlar — ekran burchagida ko'rinadi, ishga xalaqit bermaydi
+  const [stockJobs, setStockJobs] = useState([]);
   const [stockFilter, setStockFilter] = useState("all");
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
@@ -166,6 +171,11 @@ export default function AdminDashboard() {
     priceMax,
     canManageAllBranches,
   ]);
+
+  const loadRef = useRef(load);
+  useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
 
   useEffect(() => {
     load();
@@ -338,34 +348,138 @@ export default function AdminDashboard() {
     setOpenStock(true);
   };
 
-  const uploadStock = async (apply) => {
+  const stockFormData = (apply) => {
+    const fd = new FormData();
+    fd.append("file", stockFile);
+    fd.append("branch_id", stockBranch);
+    fd.append("apply", apply ? "true" : "false");
+    fd.append("mode", stockMode);
+    return fd;
+  };
+
+  // Oldindan ko'rish — oyna ichida, natija kutiladi
+  const previewStock = async () => {
     if (!stockBranch) return setStockError("Filialni tanlang");
     if (!stockFile) return setStockError("Excel faylni tanlang");
     setStockBusy(true);
     setStockError("");
     try {
-      const fd = new FormData();
-      fd.append("file", stockFile);
-      fd.append("branch_id", stockBranch);
-      fd.append("apply", apply ? "true" : "false");
-      fd.append("mode", stockMode);
-      const { data } = await api.post("/products/import-stock", fd);
+      const { data } = await api.post(
+        "/products/import-stock",
+        stockFormData(false),
+      );
       setStockPreview(data);
-      if (apply) {
-        toast.success(
-          data.mode === "receive"
-            ? `${data.branch_name}: ${data.increased} ta tovar soni oshirildi, ${data.created} ta yangi qo'shildi`
-            : `${data.branch_name}: qoldiq yangilandi (${data.updated} ta tahrirlandi, ${data.zeroed} ta 0 ga tushdi)`,
-        );
-        setOpenStock(false);
-        await load();
-      }
     } catch (e) {
       setStockError(formatApiError(e.response?.data?.detail) || e.message);
     } finally {
       setStockBusy(false);
     }
   };
+
+  const updateJob = (id, patch) =>
+    setStockJobs((jobs) =>
+      jobs.map((j) => (j.id === id ? { ...j, ...patch } : j)),
+    );
+
+  const notifyDone = (title, body) => {
+    try {
+      if (
+        typeof Notification !== "undefined" &&
+        Notification.permission === "granted" &&
+        document.hidden
+      ) {
+        new Notification(title, { body });
+      }
+    } catch {
+      /* brauzer bildirishnomasi ixtiyoriy */
+    }
+  };
+
+  // Qo'llash — oyna yopiladi, yuklash fonda davom etadi
+  const applyStock = () => {
+    if (!stockBranch) return setStockError("Filialni tanlang");
+    if (!stockFile) return setStockError("Excel faylni tanlang");
+    const id = `job-${Date.now()}`;
+    const branchName =
+      branches.find((b) => b.id === stockBranch)?.name ||
+      user?.branch_name ||
+      "Filial";
+    const job = {
+      id,
+      mode: stockMode,
+      branchName,
+      fileName: stockFile.name,
+      status: "running",
+      progress: 0,
+    };
+    const fd = stockFormData(true);
+    try {
+      if (
+        typeof Notification !== "undefined" &&
+        Notification.permission === "default"
+      ) {
+        Notification.requestPermission().catch(() => {});
+      }
+    } catch {
+      /* ignore */
+    }
+    setStockJobs((jobs) => [...jobs, job]);
+    setOpenStock(false);
+
+    api
+      .post("/products/import-stock", fd, {
+        onUploadProgress: (e) => {
+          if (e.total)
+            updateJob(id, {
+              progress: Math.round((e.loaded / e.total) * 100),
+            });
+        },
+      })
+      .then(({ data }) => {
+        const parts =
+          data.mode === "receive"
+            ? [
+                [data.increased, "ta tovar soni oshirildi"],
+                [data.created, "ta yangi tovar qo'shildi"],
+              ]
+            : [
+                [data.updated, "ta tahrirlandi"],
+                [data.zeroed, "ta qoldig'i 0 bo'ldi"],
+                [data.not_found, "ta filialda topilmadi"],
+              ];
+        const summary =
+          parts
+            .filter(([n]) => n > 0)
+            .map(([n, label]) => `${n} ${label}`)
+            .join(", ") || "o'zgarish yo'q";
+        updateJob(id, { status: "done", progress: 100, summary });
+        toast.success(`${data.branch_name}: tayyor — ${summary}`, {
+          duration: 8000,
+        });
+        notifyDone(`${data.branch_name}: Excel yuklandi`, summary);
+        loadRef.current?.();
+      })
+      .catch((e) => {
+        const message = formatApiError(e.response?.data?.detail) || e.message;
+        updateJob(id, { status: "error", error: message });
+        toast.error(`${branchName}: yuklashda xato — ${message}`, {
+          duration: 10000,
+        });
+        notifyDone(`${branchName}: yuklashda xato`, message);
+      });
+  };
+
+  const hasRunningJobs = stockJobs.some((j) => j.status === "running");
+  useEffect(() => {
+    if (!hasRunningJobs) return undefined;
+    // Yuklash tugamasdan sahifa yopilsa — ogohlantirish
+    const warn = (e) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [hasRunningJobs]);
 
   const deleteProduct = async (id) => {
     if (!window.confirm("O'chirilsinmi?")) return;
@@ -1099,6 +1213,79 @@ export default function AdminDashboard() {
         </Tabs>
       </main>
 
+      {stockJobs.length > 0 && (
+        <div
+          className="fixed bottom-4 left-4 z-[60] w-80 max-w-[calc(100vw-2rem)] space-y-2"
+          data-testid="stock-jobs"
+        >
+          {stockJobs.map((job) => (
+            <div
+              key={job.id}
+              className="bg-white border border-line rounded-2xl shadow-lg p-3 text-sm"
+              data-testid={`stock-job-${job.status}`}
+            >
+              <div className="flex items-start gap-2">
+                {job.status === "running" && (
+                  <Loader2 className="w-4 h-4 mt-0.5 text-rose animate-spin flex-shrink-0" />
+                )}
+                {job.status === "done" && (
+                  <CheckCircle2 className="w-4 h-4 mt-0.5 text-green-600 flex-shrink-0" />
+                )}
+                {job.status === "error" && (
+                  <XCircle className="w-4 h-4 mt-0.5 text-rose flex-shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-noir truncate">
+                    {job.branchName} —{" "}
+                    {job.mode === "receive" ? "tovar qo'shish" : "astatka"}
+                  </div>
+                  <div className="text-xs text-stone truncate">
+                    {job.fileName}
+                  </div>
+                  {job.status === "running" && (
+                    <>
+                      <div className="mt-2 h-1.5 rounded-full bg-cream overflow-hidden">
+                        <div
+                          className="h-full bg-rose transition-all"
+                          style={{ width: `${Math.max(job.progress, 5)}%` }}
+                        />
+                      </div>
+                      <div className="text-[11px] text-stone mt-1">
+                        {job.progress < 100
+                          ? `Fayl yuklanmoqda... ${job.progress}%`
+                          : "Bazaga yozilmoqda..."}
+                      </div>
+                    </>
+                  )}
+                  {job.status === "done" && (
+                    <div className="text-xs text-green-700 mt-1">
+                      Tayyor: {job.summary}
+                    </div>
+                  )}
+                  {job.status === "error" && (
+                    <div className="text-xs text-rose mt-1">{job.error}</div>
+                  )}
+                </div>
+                {job.status !== "running" && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setStockJobs((jobs) =>
+                        jobs.filter((j) => j.id !== job.id),
+                      )
+                    }
+                    className="text-stone hover:text-noir"
+                    aria-label="Yopish"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* ============ QR / Barcode Dialog ============ */}
       <Dialog open={openStock} onOpenChange={setOpenStock}>
         <DialogContent className="bg-ivory border-line rounded-2xl max-w-lg max-h-[92vh] overflow-y-auto">
@@ -1253,7 +1440,7 @@ export default function AdminDashboard() {
                 type="button"
                 variant="outline"
                 className="rounded-full flex-1"
-                onClick={() => uploadStock(false)}
+                onClick={previewStock}
                 disabled={stockBusy || !stockFile || !stockBranch}
                 data-testid="stock-import-preview-btn"
               >
@@ -1264,13 +1451,11 @@ export default function AdminDashboard() {
               <Button
                 type="button"
                 className="bg-noir text-ivory hover:bg-rose rounded-full flex-1"
-                onClick={() => uploadStock(true)}
-                disabled={stockBusy || !stockPreview || stockPreview.applied}
+                onClick={applyStock}
+                disabled={stockBusy || !stockFile || !stockBranch}
                 data-testid="stock-import-apply-btn"
               >
-                {stockBusy && stockPreview
-                  ? "Yuklanmoqda..."
-                  : `${stockPreview?.branch_name || "Filial"}ga qo'llash`}
+                {`${branches.find((b) => b.id === stockBranch)?.name || "Filial"}ga qo'llash`}
               </Button>
             </div>
           </div>
