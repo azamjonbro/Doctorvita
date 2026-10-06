@@ -115,7 +115,11 @@ export default function SalesScreen({ user, onCompleted }) {
       .get("/users/workers")
       .then(({ data }) => {
         setWorkers(data);
-        setSelectedEmployeeId((current) => current || user.id || "");
+        // Ishchi uchun standart — o'zi; admin/direktor sotuvchini o'zi tanlaydi
+        setSelectedEmployeeId(
+          (current) =>
+            current || (data.some((w) => w.id === user.id) ? user.id : ""),
+        );
       })
       .catch(() => {});
     const t = setInterval(() => setClock(new Date()), 30000);
@@ -260,6 +264,7 @@ export default function SalesScreen({ user, onCompleted }) {
 
   // ===== Tekshiruv =====
   const problems = [];
+  if (!selectedEmployeeId) problems.push("Sotuvchini tanlang");
   if (cart.length === 0) problems.push("Kamida bitta mahsulot tanlang");
   if (!customer.first_name.trim()) problems.push("Mijoz ismini kiriting");
   if (normalizePhone(customer.phone).length < 9)
@@ -277,7 +282,7 @@ export default function SalesScreen({ user, onCompleted }) {
   // ===== Yakunlash =====
   const buildPayload = (extra = {}) => ({
     client_request_id: requestId.current,
-    employee_id: selectedEmployeeId || user.id || null,
+    employee_id: selectedEmployeeId || null,
     customer: {
       id: customer.id || null,
       first_name: customer.first_name.trim(),
@@ -487,29 +492,31 @@ export default function SalesScreen({ user, onCompleted }) {
 
         {/* ===== O'ng: mijoz, qayta aloqa, jami ===== */}
         <div className="lg:col-span-5 space-y-3 lg:sticky lg:top-20">
-          {user.role !== "worker" && (
-            <div className="bg-white border border-line rounded-2xl p-4 space-y-2">
-              <label
-                className="block text-xs font-medium text-noir"
-                htmlFor="sale-employee"
-              >
-                Sotuvchi tanlang
-              </label>
-              <select
-                id="sale-employee"
-                value={selectedEmployeeId}
-                onChange={(e) => setSelectedEmployeeId(e.target.value)}
-                className="h-10 w-full rounded-md border border-line bg-white px-2 text-sm text-noir focus:outline-none focus:ring-2 focus:ring-rose/30"
-                data-testid="pos-employee"
-              >
-                {workers.map((worker) => (
-                  <option key={worker.id} value={worker.id}>
-                    {worker.name} {worker.surname}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div
+            className={`bg-white border rounded-2xl p-4 space-y-2 ${selectedEmployeeId ? "border-line" : "border-rose"}`}
+          >
+            <label
+              className="block text-xs font-medium text-noir"
+              htmlFor="sale-employee"
+            >
+              Sotuvni kim qildi?
+            </label>
+            <select
+              id="sale-employee"
+              value={selectedEmployeeId}
+              onChange={(e) => setSelectedEmployeeId(e.target.value)}
+              className="h-10 w-full rounded-md border border-line bg-white px-2 text-sm text-noir focus:outline-none focus:ring-2 focus:ring-rose/30"
+              data-testid="pos-employee"
+            >
+              <option value="">Sotuvchini tanlang</option>
+              {workers.map((worker) => (
+                <option key={worker.id} value={worker.id}>
+                  {worker.name} {worker.surname}
+                  {worker.id === user.id ? " (siz)" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <CustomerPanel
             customer={customer}

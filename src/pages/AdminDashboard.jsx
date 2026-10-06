@@ -34,6 +34,8 @@ import {
   Upload,
   Image as ImageIcon,
   Keyboard,
+  FileSpreadsheet,
+  Building2,
 } from "lucide-react";
 import FollowUpRulesForm from "@/components/FollowUpRulesForm";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -77,6 +79,15 @@ export default function AdminDashboard() {
   const [productPageSize, setProductPageSize] = useState(40);
   const [branchFilter, setBranchFilter] = useState("all");
   const [branchError, setBranchError] = useState("");
+  // Excel orqali filial qoldig'ini (astatka) to'g'rilash
+  const [openStock, setOpenStock] = useState(false);
+  // "stock" — qoldiqni to'g'rilash (faqat tahrir), "receive" — tovar qabul qilish
+  const [stockMode, setStockMode] = useState("stock");
+  const [stockBranch, setStockBranch] = useState("");
+  const [stockFile, setStockFile] = useState(null);
+  const [stockPreview, setStockPreview] = useState(null);
+  const [stockBusy, setStockBusy] = useState(false);
+  const [stockError, setStockError] = useState("");
   const [stockFilter, setStockFilter] = useState("all");
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
@@ -315,6 +326,44 @@ export default function AdminDashboard() {
       await load();
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail) || e.message);
+    }
+  };
+
+  const openStockDialog = (mode) => {
+    setStockMode(mode);
+    setStockBranch(user?.branch_id || "");
+    setStockFile(null);
+    setStockPreview(null);
+    setStockError("");
+    setOpenStock(true);
+  };
+
+  const uploadStock = async (apply) => {
+    if (!stockBranch) return setStockError("Filialni tanlang");
+    if (!stockFile) return setStockError("Excel faylni tanlang");
+    setStockBusy(true);
+    setStockError("");
+    try {
+      const fd = new FormData();
+      fd.append("file", stockFile);
+      fd.append("branch_id", stockBranch);
+      fd.append("apply", apply ? "true" : "false");
+      fd.append("mode", stockMode);
+      const { data } = await api.post("/products/import-stock", fd);
+      setStockPreview(data);
+      if (apply) {
+        toast.success(
+          data.mode === "receive"
+            ? `${data.branch_name}: ${data.increased} ta tovar soni oshirildi, ${data.created} ta yangi qo'shildi`
+            : `${data.branch_name}: qoldiq yangilandi (${data.updated} ta tahrirlandi, ${data.zeroed} ta 0 ga tushdi)`,
+        );
+        setOpenStock(false);
+        await load();
+      }
+    } catch (e) {
+      setStockError(formatApiError(e.response?.data?.detail) || e.message);
+    } finally {
+      setStockBusy(false);
     }
   };
 
@@ -592,6 +641,23 @@ export default function AdminDashboard() {
                 <ScanLine className="w-3.5 h-3.5 text-rose" /> Skaner doim faol
                 — barkodni ko'rsating
               </div>
+              <Button
+                onClick={() => openStockDialog("stock")}
+                variant="outline"
+                className="rounded-full"
+                data-testid="stock-import-btn"
+              >
+                <FileSpreadsheet className="w-4 h-4 mr-1" /> Excel qoldiq
+              </Button>
+              <Button
+                onClick={() => openStockDialog("receive")}
+                variant="outline"
+                className="rounded-full"
+                data-testid="receive-import-btn"
+              >
+                <FileSpreadsheet className="w-4 h-4 mr-1" /> Excel orqali
+                qo'shish
+              </Button>
               <Button
                 onClick={startCreate}
                 className="bg-rose text-ivory hover:bg-noir rounded-full"
@@ -1034,6 +1100,183 @@ export default function AdminDashboard() {
       </main>
 
       {/* ============ QR / Barcode Dialog ============ */}
+      <Dialog open={openStock} onOpenChange={setOpenStock}>
+        <DialogContent className="bg-ivory border-line rounded-2xl max-w-lg max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl text-noir flex items-center gap-2">
+              <FileSpreadsheet className="w-6 h-6 text-rose" />
+              {stockMode === "receive"
+                ? "Excel orqali tovar qo'shish"
+                : "Qoldiqni (astatka) yangilash"}
+            </DialogTitle>
+            <DialogDescription className="text-stone text-sm">
+              {stockMode === "receive"
+                ? "Kelgan tovarlar faylini yuklang: filialda bor tovarlarning soni oshiriladi, yo'q tovarlar yangi qo'shiladi."
+                : "Astatka faylini yuklang: filialdagi mavjud tovarlarning qoldig'i, narxi va muddati fayl bo'yicha tahrirlanadi. Yangi tovar qo'shilmaydi, faylda yo'q tovarlar qoldig'i 0 bo'ladi."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4" data-testid="stock-import-form">
+            <div
+              className={`rounded-xl px-4 py-3 border ${stockBranch ? "bg-noir text-ivory border-noir" : "bg-amber-50 text-amber-800 border-amber-200"}`}
+              data-testid="stock-import-target"
+            >
+              <div className="text-[11px] uppercase tracking-widest opacity-80">
+                {stockMode === "receive"
+                  ? "Tovar qo'shilayotgan filial"
+                  : "Astatka qilinayotgan filial"}
+              </div>
+              <div className="font-serif text-xl flex items-center gap-2">
+                <Building2 className="w-5 h-5" />
+                {stockBranch
+                  ? branches.find((b) => b.id === stockBranch)?.name ||
+                    user?.branch_name ||
+                    "Filial"
+                  : "Filial tanlanmagan"}
+              </div>
+            </div>
+            {canManageAllBranches && (
+              <div className="space-y-1.5">
+                <Label className="text-xs text-stone">Filialni tanlang</Label>
+                <select
+                  value={stockBranch}
+                  onChange={(e) => {
+                    setStockBranch(e.target.value);
+                    setStockPreview(null);
+                  }}
+                  disabled={stockBusy}
+                  className="w-full h-11 border border-line rounded-xl px-3 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-rose/20"
+                  data-testid="stock-import-branch"
+                >
+                  <option value="">Filialni tanlang</option>
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label className="text-xs text-stone">Excel fayl (.xlsx)</Label>
+              <Input
+                type="file"
+                accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                onChange={(e) => {
+                  setStockFile(e.target.files?.[0] || null);
+                  setStockPreview(null);
+                  setStockError("");
+                }}
+                disabled={stockBusy}
+                data-testid="stock-import-file"
+              />
+            </div>
+            {stockError && (
+              <div className="text-sm text-rose bg-rose/10 rounded-xl px-3 py-2">
+                {stockError}
+              </div>
+            )}
+            {stockPreview && !stockPreview.applied && (
+              <div
+                className="rounded-xl border border-line bg-white p-3 text-sm space-y-2"
+                data-testid="stock-import-preview"
+              >
+                <div className="font-medium text-noir">
+                  Faylda {stockPreview.rows} ta tovar, jami{" "}
+                  {stockPreview.total_stock} dona
+                </div>
+                {stockPreview.already_imported_at && (
+                  <div className="text-xs bg-amber-50 text-amber-800 rounded-lg px-2 py-1.5">
+                    Diqqat: bu fayl ushbu filialga{" "}
+                    {new Date(
+                      stockPreview.already_imported_at,
+                    ).toLocaleString()}{" "}
+                    da allaqachon yuklangan.
+                    {stockPreview.mode === "receive"
+                      ? " Qayta qo'llasangiz, tovarlar soni yana oshadi."
+                      : ""}
+                  </div>
+                )}
+                {stockPreview.mode === "receive" ? (
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="bg-cream rounded-lg px-2 py-1.5">
+                      Soni oshiriladi: <b>{stockPreview.increased}</b>
+                    </div>
+                    <div className="bg-cream rounded-lg px-2 py-1.5">
+                      Yangi qo'shiladi: <b>{stockPreview.created}</b>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="bg-cream rounded-lg px-2 py-1.5">
+                      Tahrirlanadi: <b>{stockPreview.updated}</b>
+                    </div>
+                    <div className="bg-cream rounded-lg px-2 py-1.5">
+                      O'zgarmaydi: <b>{stockPreview.unchanged}</b>
+                    </div>
+                    <div
+                      className={`rounded-lg px-2 py-1.5 ${stockPreview.zeroed ? "bg-amber-50 text-amber-800" : "bg-cream"}`}
+                    >
+                      Qoldig'i 0 bo'ladi: <b>{stockPreview.zeroed}</b>
+                    </div>
+                    <div
+                      className={`rounded-lg px-2 py-1.5 ${stockPreview.not_found ? "bg-amber-50 text-amber-800" : "bg-cream"}`}
+                    >
+                      Filialda topilmadi: <b>{stockPreview.not_found}</b>
+                    </div>
+                  </div>
+                )}
+                {stockPreview.mode === "stock" && stockPreview.zeroed > 0 && (
+                  <div className="text-xs text-amber-800">
+                    Faylda yo'q (0 bo'ladi):{" "}
+                    {stockPreview.zeroed_sample.join(", ")}
+                    {stockPreview.zeroed > stockPreview.zeroed_sample.length
+                      ? " ..."
+                      : ""}
+                  </div>
+                )}
+                {stockPreview.mode === "stock" &&
+                  stockPreview.not_found > 0 && (
+                    <div className="text-xs text-amber-800">
+                      Filialda yo'q, o'tkazib yuboriladi (ularni "Excel orqali
+                      qo'shish" bilan kiriting):{" "}
+                      {stockPreview.not_found_sample.join(", ")}
+                      {stockPreview.not_found >
+                      stockPreview.not_found_sample.length
+                        ? " ..."
+                        : ""}
+                    </div>
+                  )}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full flex-1"
+                onClick={() => uploadStock(false)}
+                disabled={stockBusy || !stockFile || !stockBranch}
+                data-testid="stock-import-preview-btn"
+              >
+                {stockBusy && !stockPreview
+                  ? "Tekshirilmoqda..."
+                  : "Tekshirish"}
+              </Button>
+              <Button
+                type="button"
+                className="bg-noir text-ivory hover:bg-rose rounded-full flex-1"
+                onClick={() => uploadStock(true)}
+                disabled={stockBusy || !stockPreview || stockPreview.applied}
+                data-testid="stock-import-apply-btn"
+              >
+                {stockBusy && stockPreview
+                  ? "Yuklanmoqda..."
+                  : `${stockPreview?.branch_name || "Filial"}ga qo'llash`}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog
         open={openQR}
         onOpenChange={(v) => {
