@@ -1010,7 +1010,7 @@ export default function DirectorDashboard() {
                     <TableHead>Chegirma</TableHead>
                     <TableHead>Foyda</TableHead>
                     <TableHead>Jami</TableHead>
-                    <TableHead className="text-right">Amallar</TableHead>
+                    <TableHead className="text-right sticky right-0 bg-white">Amallar</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1040,7 +1040,7 @@ export default function DirectorDashboard() {
                       <TableCell>
                         {Number(s.total).toLocaleString()} so'm
                       </TableCell>
-                      <TableCell className="text-right whitespace-nowrap">
+                      <TableCell className="text-right whitespace-nowrap sticky right-0 bg-white">
                         <Button
                           size="sm"
                           variant="ghost"
