@@ -385,14 +385,19 @@ export default function AdminDashboard() {
           closeQRDialog();
           setEditing(null);
           setScanOrigin(null);
-          setForm({ ...empty, barcode: trimmed });
+          setBranchError("");
+          setForm({
+            ...empty,
+            barcode: trimmed,
+            branch_id: user?.branch_id || "",
+          });
           setOpen(true);
         }, 900);
       } finally {
         setQrLoading(false);
       }
     },
-    [qrCode],
+    [qrCode, user?.branch_id],
   );
 
   // ---- Hardware scanner: global keydown listener ----
@@ -455,7 +460,12 @@ export default function AdminDashboard() {
       closeQRDialog();
       setEditing(null);
       setScanOrigin(null);
-      setForm({ ...empty, barcode: qrCode.trim() });
+      setBranchError("");
+      setForm({
+        ...empty,
+        barcode: qrCode.trim(),
+        branch_id: user?.branch_id || "",
+      });
       setOpen(true);
     }
   };
@@ -582,6 +592,13 @@ export default function AdminDashboard() {
                 <ScanLine className="w-3.5 h-3.5 text-rose" /> Skaner doim faol
                 — barkodni ko'rsating
               </div>
+              <Button
+                onClick={startCreate}
+                className="bg-rose text-ivory hover:bg-noir rounded-full"
+                data-testid="add-product-btn"
+              >
+                <Plus className="w-4 h-4 mr-1" /> Mahsulot qo'shish
+              </Button>
               <Button
                 onClick={openQRDialog}
                 className="bg-noir text-ivory hover:bg-rose rounded-full"
