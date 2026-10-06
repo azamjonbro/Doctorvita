@@ -74,6 +74,7 @@ export default function DirectorDashboard() {
   const [openWorker, setOpenWorker] = useState(false);
   const [editingWorker, setEditingWorker] = useState(null);
   const [editBranch, setEditBranch] = useState(null);
+  const [editSale, setEditSale] = useState(null);
   const [salesQuickRange, setSalesQuickRange] = useState("all");
   const [salesDateFrom, setSalesDateFrom] = useState("");
   const [salesDateTo, setSalesDateTo] = useState("");
@@ -271,6 +272,53 @@ export default function DirectorDashboard() {
     try {
       await api.delete(`/users/workers/${id}`);
       toast.success("O'chirildi");
+      await load();
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail) || e.message);
+    }
+  };
+
+  const startEditSale = (sale) => {
+    setEditSale({
+      id: sale.id,
+      product_name: sale.product_name,
+      quantity: String(sale.quantity ?? 1),
+      product_price: String(sale.product_price ?? 0),
+      customer_name: sale.customer_name || "",
+      customer_surname: sale.customer_surname || "",
+      customer_phone: sale.customer_phone || "",
+    });
+  };
+
+  const saveSale = async (e) => {
+    e.preventDefault();
+    try {
+      await api.put(`/sales/${editSale.id}`, {
+        quantity: Number(editSale.quantity),
+        product_price: Number(editSale.product_price),
+        customer_name: editSale.customer_name,
+        customer_surname: editSale.customer_surname,
+        customer_phone: editSale.customer_phone,
+      });
+      toast.success("Sotuv yangilandi");
+      setEditSale(null);
+      await load();
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail) || e.message);
+    }
+  };
+
+  const deleteSale = async (sale) => {
+    if (
+      !window.confirm(
+        `"${sale.product_name}" sotuvi (${sale.quantity} ta) o'chirilsinmi?\n\n` +
+          `Mahsulot omborga qaytariladi, statistika qayta hisoblanadi.`,
+      )
+    )
+      return;
+    try {
+      await api.delete(`/sales/${sale.id}`);
+      toast.success("Sotuv o'chirildi");
       await load();
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail) || e.message);
@@ -962,6 +1010,7 @@ export default function DirectorDashboard() {
                     <TableHead>Chegirma</TableHead>
                     <TableHead>Foyda</TableHead>
                     <TableHead>Jami</TableHead>
+                    <TableHead className="text-right">Amallar</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -991,12 +1040,33 @@ export default function DirectorDashboard() {
                       <TableCell>
                         {Number(s.total).toLocaleString()} so'm
                       </TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => startEditSale(s)}
+                          title="Tahrirlash"
+                          data-testid={`sale-edit-${s.id}`}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-rose hover:text-rose"
+                          onClick={() => deleteSale(s)}
+                          title="O'chirish"
+                          data-testid={`sale-delete-${s.id}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                   {filteredSales.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={8}
+                        colSpan={9}
                         className="text-stone text-center py-10"
                       >
                         Ushbu filtr bo'yicha sotuvlar yo'q
@@ -1580,6 +1650,104 @@ export default function DirectorDashboard() {
                     setEditBranch({ ...editBranch, address: e.target.value })
                   }
                 />
+              </div>
+              <Button
+                type="submit"
+                className="w-full bg-noir text-ivory hover:bg-rose rounded-full h-11"
+              >
+                Saqlash
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(editSale)}
+        onOpenChange={(v) => !v && setEditSale(null)}
+      >
+        <DialogContent className="bg-ivory border-line rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl text-noir">
+              Sotuvni tahrirlash
+            </DialogTitle>
+          </DialogHeader>
+          {editSale && (
+            <form
+              onSubmit={saveSale}
+              className="space-y-3"
+              data-testid="edit-sale-form"
+            >
+              <div className="text-sm text-stone">{editSale.product_name}</div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Soni</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={editSale.quantity}
+                    onChange={(e) =>
+                      setEditSale({ ...editSale, quantity: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <Label>Dona narxi (so'm)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={editSale.product_price}
+                    onChange={(e) =>
+                      setEditSale({ ...editSale, product_price: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Mijoz ismi</Label>
+                  <Input
+                    value={editSale.customer_name}
+                    onChange={(e) =>
+                      setEditSale({ ...editSale, customer_name: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label>Familiya</Label>
+                  <Input
+                    value={editSale.customer_surname}
+                    onChange={(e) =>
+                      setEditSale({
+                        ...editSale,
+                        customer_surname: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>Telefon</Label>
+                <Input
+                  value={editSale.customer_phone}
+                  onChange={(e) =>
+                    setEditSale({ ...editSale, customer_phone: e.target.value })
+                  }
+                />
+              </div>
+              <div className="text-sm text-noir">
+                Jami:{" "}
+                <b>
+                  {(
+                    Number(editSale.quantity || 0) *
+                    Number(editSale.product_price || 0)
+                  ).toLocaleString()}{" "}
+                  so'm
+                </b>
               </div>
               <Button
                 type="submit"
