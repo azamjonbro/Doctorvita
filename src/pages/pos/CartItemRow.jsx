@@ -12,13 +12,14 @@ import {
   CalendarDays,
   AlertTriangle,
 } from "lucide-react";
-import { fmtMoney, fmtDate } from "@/lib/posLogic";
+import { fmtMoney, fmtDate, UNIT_LABELS } from "@/lib/posLogic";
 
 const NumField = ({
   label,
   value,
   onChange,
   min = 0,
+  step,
   className = "",
   testId,
 }) => (
@@ -27,6 +28,7 @@ const NumField = ({
     <Input
       type="number"
       min={min}
+      step={step}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className="h-9 bg-white mt-0.5"
@@ -62,6 +64,8 @@ export default function CartItemRow({ index, item, calc, onChange, onRemove }) {
     }
     onChange({ quantity: n, stockWarning: false });
   };
+  const unit = regimen.unitType === "ml" ? "ml" : "dona";
+  const unitLabel = UNIT_LABELS[unit];
   const setReg = (patch) =>
     onChange({ regimen: { ...regimen, ...patch }, followUpsEdited: null });
 
@@ -192,6 +196,27 @@ export default function CartItemRow({ index, item, calc, onChange, onRemove }) {
 
         {isMedicine && (
           <div className="space-y-2">
+            <div className="flex items-center gap-2 text-[11px] text-stone">
+              O'lchov:
+              <div
+                className="inline-flex rounded-lg border border-line overflow-hidden"
+                data-testid={`pos-unit-${index}`}
+              >
+                {["dona", "ml"].map((u) => (
+                  <button
+                    key={u}
+                    type="button"
+                    onClick={() => setReg({ unitType: u })}
+                    className={`px-3 h-7 text-xs ${unit === u ? "bg-noir text-ivory" : "bg-white text-noir hover:bg-cream"}`}
+                    data-testid={`pos-unit-${index}-${u}`}
+                  >
+                    {u === "ml"
+                      ? "ml (sirop, tomchi)"
+                      : "dona (tabletka, kapsula)"}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="grid grid-cols-3 gap-2">
               <NumField
                 label="Kuniga (mahal)"
@@ -201,16 +226,18 @@ export default function CartItemRow({ index, item, calc, onChange, onRemove }) {
                 testId={`pos-times-${index}`}
               />
               <NumField
-                label="Iste'mol miqdori"
+                label={`Har mahal (${unitLabel})`}
                 value={regimen.unitsPerIntake}
                 min={0}
+                step={unit === "ml" ? 0.5 : "any"}
                 onChange={(v) => setReg({ unitsPerIntake: v })}
                 testId={`pos-per-intake-${index}`}
               />
               <NumField
-                label="Qadoqda (dona)"
+                label={unit === "ml" ? "Hajmi (ml)" : "Qadoqda (dona)"}
                 value={regimen.unitsPerPackage}
-                min={1}
+                min={unit === "ml" ? 0 : 1}
+                step="any"
                 onChange={(v) => setReg({ unitsPerPackage: v })}
                 testId={`pos-upp-${index}`}
               />
@@ -243,10 +270,10 @@ export default function CartItemRow({ index, item, calc, onChange, onRemove }) {
             >
               <CalendarDays className="w-3.5 h-3.5 text-rose" />
               <span>
-                Jami: <b>{reg.total_units}</b> dona
+                Jami: <b>{reg.total_units}</b> {unitLabel}
               </span>
               <span>
-                · Kunlik sarf: <b>{reg.daily_usage}</b>
+                · Kunlik sarf: <b>{reg.daily_usage}</b> {unitLabel}
               </span>
               {reg.estimated_days > 0 ? (
                 <>

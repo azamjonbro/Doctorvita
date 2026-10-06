@@ -164,7 +164,10 @@ export default function ProductSearch({ onPick, onOpenCamera, inputRef }) {
                     {p.sku && <span>SKU: {p.sku}</span>}
                     {p.barcode && <span>Kod: {p.barcode}</span>}
                     {p.units_per_package > 1 && (
-                      <span>· {p.units_per_package} dona/qadoq</span>
+                      <span>
+                        · {p.units_per_package}{" "}
+                        {p.unit_type === "ml" ? "ml" : "dona/qadoq"}
+                      </span>
                     )}
                     {p.expiry_date && (
                       <span className={`rounded px-1.5 ${expiry.className}`}>

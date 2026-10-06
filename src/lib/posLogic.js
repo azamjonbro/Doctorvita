@@ -119,10 +119,32 @@ export const unitsFromProduct = (p) => {
     return 1;
 };
 
+export const UNIT_LABELS = { dona: "dona", ml: "ml" };
+
+const ML_RE = /(\d+(?:[.,]\d+)?)\s*(?:МЛ|ML)(?![A-Za-zА-Яа-яЁё])/i;
+
+/**
+ * Qadoq birligi: { unitType: "ml", amount: 150 } — sirop/tomchi, { unitType: "dona", amount: 120 } — tabletka.
+ * Nomda hajm (150МЛ) bo'lib, qadoqda bitta idish (№1 yoki № yo'q) bo'lsa — ml; "2МЛ №10" ampula — dona.
+ */
+export const packageFromProduct = (p) => {
+    for (const text of [p?.name || "", p?.description || ""]) {
+        const ml = text.match(ML_RE);
+        if (!ml) continue;
+        const count = text.match(/№\s*(\d+)/);
+        if (!count || Number(count[1]) <= 1) return { unitType: "ml", amount: Number(ml[1].replace(",", ".")) };
+        break;
+    }
+    return { unitType: "dona", amount: unitsFromProduct(p) };
+};
+
+const tidy = (n) => Math.round(n * 1000) / 1000;
+
 export const computeRegimen = ({ quantity, unitsPerPackage, timesPerDay, unitsPerIntake, courseStart }) => {
-    const totalUnits = Math.max(Number(quantity) || 0, 0) * Math.max(Number(unitsPerPackage) || 0, 0);
-    const daily = Math.max(Number(timesPerDay) || 0, 0) * Math.max(Number(unitsPerIntake) || 0, 0);
-    const days = daily > 0 && totalUnits > 0 ? Math.floor(totalUnits / daily) : 0;
+    const totalUnits = tidy(Math.max(Number(quantity) || 0, 0) * Math.max(Number(unitsPerPackage) || 0, 0));
+    const daily = tidy(Math.max(Number(timesPerDay) || 0, 0) * Math.max(Number(unitsPerIntake) || 0, 0));
+    // 1e-9 — 0.1 kabi kasr dozalarda suzuvchi nuqta xatosi kunni kamaytirmasin (backend bilan bir xil)
+    const days = daily > 0 && totalUnits > 0 ? Math.floor(totalUnits / daily + 1e-9) : 0;
     const start = courseStart || todayISO();
     return {
         total_units: totalUnits,

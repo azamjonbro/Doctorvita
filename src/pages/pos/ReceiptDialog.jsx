@@ -14,7 +14,7 @@ export function printPosReceipt(bundle) {
     const rows = items.map(it => `
         <div class="row"><span>${esc(it.product_name)} × ${it.quantity}</span><span>${Math.round(it.line_total).toLocaleString()}</span></div>
         ${it.discount_percent > 0 ? `<div class="row small"><span>&nbsp;&nbsp;chegirma ${it.discount_percent}%</span><span></span></div>` : ""}
-        ${it.is_medicine && it.daily_usage ? `<div class="row small"><span>&nbsp;&nbsp;kuniga ${it.times_per_day}×${it.units_per_intake}${it.recommendation ? ", " + esc(it.recommendation) : ""} · ${it.estimated_days} kun (${fmtDate(it.estimated_end_date)})</span></div>` : ""}
+        ${it.is_medicine && it.daily_usage ? `<div class="row small"><span>&nbsp;&nbsp;kuniga ${it.times_per_day}×${it.units_per_intake} ${it.unit_type === "ml" ? "ml" : "dona"}${it.recommendation ? ", " + esc(it.recommendation) : ""} · ${it.estimated_days} kun (${fmtDate(it.estimated_end_date)})</span></div>` : ""}
     `).join("");
     const fuRows = fus.map(f => `<div class="row small"><span>${fmtDate(f.scheduled_at)} — ${esc(f.product_name)}</span><span>${esc(f.stage_label)}</span></div>`).join("");
     win.document.write(`
@@ -86,7 +86,7 @@ export default function ReceiptDialog({ bundle, onClose }) {
                             <div className="flex justify-between gap-2"><span>{it.product_name} × {it.quantity}</span><span>{fmtMoney(it.line_total)}</span></div>
                             {it.is_medicine && it.daily_usage > 0 && (
                                 <div className="text-stone text-[10px] pl-2">
-                                    kuniga {it.times_per_day}×{it.units_per_intake}{it.recommendation ? `, ${it.recommendation}` : ""} · {it.estimated_days} kun · tugaydi {fmtDate(it.estimated_end_date)}
+                                    kuniga {it.times_per_day}×{it.units_per_intake} {it.unit_type === "ml" ? "ml" : "dona"}{it.recommendation ? `, ${it.recommendation}` : ""} · {it.estimated_days} kun · tugaydi {fmtDate(it.estimated_end_date)}
                                 </div>
                             )}
                         </div>

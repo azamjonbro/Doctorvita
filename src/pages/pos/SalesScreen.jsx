@@ -41,7 +41,7 @@ import {
   newRequestId,
   normalizePhone,
   todayISO,
-  unitsFromProduct,
+  packageFromProduct,
 } from "@/lib/posLogic";
 
 const numOrNull = (v) =>
@@ -59,7 +59,11 @@ const makeItem = (product) => ({
   regimen: {
     timesPerDay: "",
     unitsPerIntake: "",
-    unitsPerPackage: unitsFromProduct(product),
+    // Qidiruv backend'dan tayyor birlik qaytaradi; bo'lmasa nomdan aniqlanadi
+    unitType: product.unit_type || packageFromProduct(product).unitType,
+    unitsPerPackage: product.unit_type
+      ? product.units_per_package
+      : packageFromProduct(product).amount,
     recommendation: "",
     courseStart: todayISO(),
   },
@@ -275,7 +279,9 @@ export default function SalesScreen({ user, onCompleted }) {
         `${c.product.name}: kuniga necha mahal va har mahal nechtadan`,
       );
     else if (c.isMedicine && calc[c.uid].reg.total_units <= 0)
-      problems.push(`${c.product.name}: qadoqdagi dona soni`);
+      problems.push(
+        `${c.product.name}: qadoqdagi ${c.regimen.unitType === "ml" ? "hajm (ml)" : "dona soni"}`,
+      );
   }
   const canSubmit = problems.length === 0 && !busy;
 
@@ -307,6 +313,7 @@ export default function SalesScreen({ user, onCompleted }) {
       is_medicine: c.isMedicine,
       regimen: c.isMedicine
         ? {
+            unit_type: c.regimen.unitType || "dona",
             units_per_package: Number(c.regimen.unitsPerPackage) || 1,
             times_per_day: Number(c.regimen.timesPerDay) || 0,
             units_per_intake: Number(c.regimen.unitsPerIntake) || 0,
