@@ -26,6 +26,7 @@ import FollowUpsPanel from "@/pages/pos/FollowUpsPanel";
 import { printPosReceipt } from "@/pages/pos/ReceiptDialog";
 import { fmtMoney, fmtDate, formatCalendarDate } from "@/lib/posLogic";
 import ExpiryProductsPanel from "@/components/ExpiryProductsPanel";
+import ProductManagementPanel from "@/components/ProductManagementPanel";
 
 export default function WorkerDashboard() {
   const { user, logout } = useAuth();
@@ -184,6 +185,9 @@ export default function WorkerDashboard() {
             <TabsTrigger value="pos" data-testid="tab-register">
               Sotuv
             </TabsTrigger>
+            <TabsTrigger value="products" data-testid="tab-products">
+              Mahsulotlar
+            </TabsTrigger>
             <TabsTrigger value="followups" data-testid="tab-follow">
               Qayta aloqa
               {fuBadge > 0 && (
@@ -214,6 +218,10 @@ export default function WorkerDashboard() {
           {/* ============ SOTUV (POS) ============ */}
           <TabsContent value="pos" className="mt-5">
             <SalesScreen user={user} onCompleted={load} />
+          </TabsContent>
+
+          <TabsContent value="products" className="mt-5">
+            <ProductManagementPanel />
           </TabsContent>
 
           <TabsContent value="expiry" className="mt-5">

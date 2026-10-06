@@ -77,6 +77,8 @@ export default function SalesScreen({ user, onCompleted }) {
   const [cart, setCart] = useState([]);
   const [customer, setCustomer] = useState(emptyCustomer());
   const [customerDetail, setCustomerDetail] = useState(null);
+  const [workers, setWorkers] = useState([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [discountAmount, setDiscountAmount] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -109,9 +111,16 @@ export default function SalesScreen({ user, onCompleted }) {
         }),
       )
       .catch(() => {});
+    api
+      .get("/users/workers")
+      .then(({ data }) => {
+        setWorkers(data);
+        setSelectedEmployeeId((current) => current || user.id || "");
+      })
+      .catch(() => {});
     const t = setInterval(() => setClock(new Date()), 30000);
     return () => clearInterval(t);
-  }, [loadMeta]);
+  }, [loadMeta, user.id]);
 
   // ===== Savat =====
   const addToCart = useCallback((product, qty = 1) => {
@@ -268,6 +277,7 @@ export default function SalesScreen({ user, onCompleted }) {
   // ===== Yakunlash =====
   const buildPayload = (extra = {}) => ({
     client_request_id: requestId.current,
+    employee_id: selectedEmployeeId || user.id || null,
     customer: {
       id: customer.id || null,
       first_name: customer.first_name.trim(),
@@ -477,6 +487,30 @@ export default function SalesScreen({ user, onCompleted }) {
 
         {/* ===== O'ng: mijoz, qayta aloqa, jami ===== */}
         <div className="lg:col-span-5 space-y-3 lg:sticky lg:top-20">
+          {user.role !== "worker" && (
+            <div className="bg-white border border-line rounded-2xl p-4 space-y-2">
+              <label
+                className="block text-xs font-medium text-noir"
+                htmlFor="sale-employee"
+              >
+                Sotuvchi tanlang
+              </label>
+              <select
+                id="sale-employee"
+                value={selectedEmployeeId}
+                onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                className="h-10 w-full rounded-md border border-line bg-white px-2 text-sm text-noir focus:outline-none focus:ring-2 focus:ring-rose/30"
+                data-testid="pos-employee"
+              >
+                {workers.map((worker) => (
+                  <option key={worker.id} value={worker.id}>
+                    {worker.name} {worker.surname}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <CustomerPanel
             customer={customer}
             onChange={(c) => {

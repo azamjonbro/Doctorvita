@@ -39,6 +39,7 @@ import FollowUpRulesForm from "@/components/FollowUpRulesForm";
 import { DatePicker } from "@/components/ui/date-picker";
 import { expiryStatus } from "@/lib/posLogic";
 import ExpiryProductsPanel from "@/components/ExpiryProductsPanel";
+import SalesScreen from "@/pages/pos/SalesScreen";
 
 const empty = {
   name: "",
@@ -53,12 +54,14 @@ const empty = {
   expiry_date: "",
   sku: "",
   units_per_package: 0,
-  all_branches: true,
+  branch_id: "",
+  all_branches: false,
 };
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
   const [products, setProducts] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [deletedProducts, setDeletedProducts] = useState([]);
   const [questions, setQuestions] = useState([]);
   const [news, setNews] = useState([]);
@@ -72,11 +75,28 @@ export default function AdminDashboard() {
   const [search, setSearch] = useState("");
   const [productPage, setProductPage] = useState(1);
   const [productPageSize, setProductPageSize] = useState(40);
+  const [branchFilter, setBranchFilter] = useState("all");
+  const [branchError, setBranchError] = useState("");
   const [stockFilter, setStockFilter] = useState("all");
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalProductPages, setTotalProductPages] = useState(1);
+
+  // Filialsiz admin barcha filiallarni boshqaradi, filial admini faqat o'zinikini
+  // (backend ham xuddi shuni tekshiradi).
+  const canManageAllBranches = !user?.branch_id;
+  const productBranchLabel = (p) => {
+    if (p.all_branches) return "Barcha filiallar";
+    if (!p.branch_id) return "Filialsiz";
+    return (
+      branches.find((branch) => branch.id === p.branch_id)?.name ||
+      "Noma'lum filial"
+    );
+  };
+  const canEditProduct = (p) =>
+    canManageAllBranches ||
+    (!p.all_branches && p.branch_id === user?.branch_id);
 
   // QR dialog state
   const [openQR, setOpenQR] = useState(false);
@@ -97,15 +117,19 @@ export default function AdminDashboard() {
       page: productPage,
       limit: productPageSize,
       stock_status: stockFilter,
+      ...(canManageAllBranches && branchFilter !== "all"
+        ? { branch_id: branchFilter }
+        : {}),
       ...(priceMin !== "" ? { price_min: Number(priceMin) } : {}),
       ...(priceMax !== "" ? { price_max: Number(priceMax) } : {}),
     };
 
-    const [p, q, n, d] = await Promise.all([
+    const [p, q, n, d, b] = await Promise.all([
       api.get("/products", { params }),
       api.get("/questions"),
       api.get("/news"),
       api.get("/products/deleted").catch(() => ({ data: [] })),
+      api.get("/branches").catch(() => ({ data: [] })),
     ]);
 
     const payload = p.data;
@@ -120,7 +144,17 @@ export default function AdminDashboard() {
     setQuestions(q.data);
     setNews(n.data);
     setDeletedProducts(d.data);
-  }, [search, productPage, productPageSize, stockFilter, priceMin, priceMax]);
+    setBranches(b.data || []);
+  }, [
+    search,
+    productPage,
+    productPageSize,
+    branchFilter,
+    stockFilter,
+    priceMin,
+    priceMax,
+    canManageAllBranches,
+  ]);
 
   useEffect(() => {
     load();
@@ -131,7 +165,8 @@ export default function AdminDashboard() {
   const startCreate = () => {
     setEditing(null);
     setScanOrigin(null);
-    setForm(empty);
+    setBranchError("");
+    setForm({ ...empty, branch_id: user?.branch_id || "" });
     setOpen(true);
   };
   const startEdit = (p) => {
@@ -150,8 +185,10 @@ export default function AdminDashboard() {
       expiry_date: p.expiry_date || "",
       sku: p.sku || "",
       units_per_package: Number(p.units_per_package) || 0,
-      all_branches: p.all_branches !== false,
+      branch_id: p.branch_id || user?.branch_id || "",
+      all_branches: Boolean(p.all_branches),
     });
+    setBranchError("");
     setOpen(true);
   };
 
@@ -172,8 +209,10 @@ export default function AdminDashboard() {
       expiry_date: p.expiry_date || "",
       sku: p.sku || "",
       units_per_package: Number(p.units_per_package) || 0,
-      all_branches: p.all_branches !== false,
+      branch_id: user?.branch_id || p.branch_id || "",
+      all_branches: false,
     };
+    setBranchError("");
     setEditing(null);
     setScanOrigin({ ...p, _snapshot: snapshot });
     setAddQty(1);
@@ -204,6 +243,7 @@ export default function AdminDashboard() {
       "category",
       "barcode",
       "expiry_date",
+      "branch_id",
     ];
     for (const k of fields) {
       const a = String(s[k] ?? "");
@@ -223,7 +263,14 @@ export default function AdminDashboard() {
         discount_percent: Number(form.discount_percent),
         stock: Number(form.stock),
         units_per_package: Number(form.units_per_package) || 0,
+        branch_id: form.branch_id || "",
+        all_branches: user?.role === "director" && form.all_branches,
       };
+      // Faqat qoldiq qo'shishda (skaner, o'zgarishsiz) filial talab qilinmaydi
+      if (!payload.branch_id && !(scanOrigin && !isFormChangedFromSnapshot())) {
+        setBranchError("Filialni tanlang");
+        return toast.error("Filialni tanlang");
+      }
       if (payload.discount_percent < 0 || payload.discount_percent > 100)
         return toast.error("Chegirma 0 dan 100 gacha bo'lishi kerak");
       if (payload.price < payload.cost_price)
@@ -239,6 +286,13 @@ export default function AdminDashboard() {
           const add = Math.max(1, Number(addQty) || 1);
           await api.post(`/products/${scanOrigin.id}/stock-add`, { add });
           toast.success(`Eski "${scanOrigin.name}" ga ${add} ta qo'shildi`);
+        } else if (payload.branch_id !== (scanOrigin.branch_id || "")) {
+          // Boshqa filial tanlangan — o'sha filialga shu shtrix-kod bilan alohida tovar
+          payload.stock = Math.max(1, Number(addQty) || 1);
+          await api.post(`/products`, payload);
+          toast.success(
+            `"${payload.name}" ${productBranchLabel(payload)} filialiga qo'shildi`,
+          );
         } else {
           // Maydonlar ozgargan — yangi variant sifatida qoshiladi.
           // parent_barcode = eski barkod => QR skanerlanganda ikkalasi ham chiqadi
@@ -473,6 +527,9 @@ export default function AdminDashboard() {
             <TabsTrigger value="products" data-testid="a-tab-products">
               Mahsulotlar ({products.length})
             </TabsTrigger>
+            <TabsTrigger value="pos" data-testid="a-tab-pos">
+              Sotuv qo'shish
+            </TabsTrigger>
             <TabsTrigger value="expiry" data-testid="a-tab-expiry">
               Yaroqlilik
             </TabsTrigger>
@@ -497,6 +554,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="settings" className="mt-6">
             <FollowUpRulesForm />
+          </TabsContent>
+
+          <TabsContent value="pos" className="mt-6">
+            <SalesScreen user={user} onCompleted={load} />
           </TabsContent>
 
           <TabsContent value="expiry" className="mt-6">
@@ -531,7 +592,33 @@ export default function AdminDashboard() {
             </div>
 
             <div className="rounded-2xl border border-line bg-white p-4 space-y-3">
-              <div className="grid gap-3 md:grid-cols-[1.2fr_1fr_1fr_1fr_auto] items-end">
+              <div
+                className={`grid gap-3 items-end ${canManageAllBranches ? "md:grid-cols-[1.2fr_1fr_1fr_1fr_1fr_auto]" : "md:grid-cols-[1.2fr_1fr_1fr_1fr_auto]"}`}
+              >
+                {canManageAllBranches && (
+                  <div>
+                    <Label className="text-xs text-stone mb-1 block">
+                      Filial
+                    </Label>
+                    <select
+                      value={branchFilter}
+                      onChange={(e) => {
+                        setBranchFilter(e.target.value);
+                        setProductPage(1);
+                      }}
+                      className="w-full border border-line rounded-xl px-3 py-2 bg-ivory text-sm focus:outline-none focus:ring-2 focus:ring-rose/20"
+                      data-testid="product-branch-filter"
+                    >
+                      <option value="all">Barcha filiallar</option>
+                      {branches.map((branch) => (
+                        <option key={branch.id} value={branch.id}>
+                          {branch.name}
+                        </option>
+                      ))}
+                      <option value="none">Filialsiz</option>
+                    </select>
+                  </div>
+                )}
                 <div>
                   <Label className="text-xs text-stone mb-1 block">
                     Qoldiq holati
@@ -600,6 +687,7 @@ export default function AdminDashboard() {
                   variant="outline"
                   className="rounded-full"
                   onClick={() => {
+                    setBranchFilter("all");
                     setStockFilter("all");
                     setPriceMin("");
                     setPriceMax("");
@@ -691,6 +779,14 @@ export default function AdminDashboard() {
                         {p.name}
                       </h3>
                       <div className="text-xs space-y-1 bg-cream rounded-lg p-2">
+                        {canManageAllBranches && (
+                          <div className="flex justify-between gap-2">
+                            <span className="text-stone">Filial:</span>
+                            <span className="font-mono text-noir truncate max-w-[140px]">
+                              {productBranchLabel(p)}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex justify-between">
                           <span className="text-stone">Xarid:</span>
                           <span className="font-mono text-noir">
@@ -746,27 +842,33 @@ export default function AdminDashboard() {
                           <span>{expiry.label}</span>
                         </div>
                       )}
-                      <div className="flex gap-2 mt-3">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => startEdit(p)}
-                          className="rounded-full flex-1"
-                          data-testid={`edit-product-${p.id}`}
-                        >
-                          <Edit3 className="w-3 h-3 mr-1" />
-                          Tahrirlash
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => deleteProduct(p.id)}
-                          className="text-rose hover:bg-rose/10 rounded-full"
-                          data-testid={`delete-product-${p.id}`}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
+                      {canEditProduct(p) ? (
+                        <div className="flex gap-2 mt-3">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => startEdit(p)}
+                            className="rounded-full flex-1"
+                            data-testid={`edit-product-${p.id}`}
+                          >
+                            <Edit3 className="w-3 h-3 mr-1" />
+                            Tahrirlash
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => deleteProduct(p.id)}
+                            className="text-rose hover:bg-rose/10 rounded-full"
+                            data-testid={`delete-product-${p.id}`}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="mt-3 text-xs text-stone bg-cream rounded-lg px-2 py-1.5 text-center">
+                          Umumiy mahsulot — faqat ko'rish
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -1246,6 +1348,43 @@ export default function AdminDashboard() {
                   onChange={(e) => setForm({ ...form, stock: e.target.value })}
                 />
               </Field>
+              <Field
+                label="Filial"
+                hint={
+                  canManageAllBranches
+                    ? undefined
+                    : "Mahsulot sizning filialingizga biriktiriladi"
+                }
+              >
+                <select
+                  data-testid="p-branch"
+                  value={form.branch_id}
+                  onChange={(e) => {
+                    setForm({ ...form, branch_id: e.target.value });
+                    setBranchError("");
+                  }}
+                  disabled={!canManageAllBranches}
+                  className={`${FIELD_INPUT} w-full border text-sm focus:outline-none focus:ring-2 focus:ring-rose/20 disabled:opacity-70 ${branchError ? "border-rose" : "border-line"}`}
+                >
+                  <option value="">
+                    {branches.length ? "Filialni tanlang" : "Filiallar yo'q"}
+                  </option>
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.name}
+                      {branch.active === false ? " (nofaol)" : ""}
+                    </option>
+                  ))}
+                </select>
+                {branchError && (
+                  <div
+                    className="text-xs text-rose"
+                    data-testid="p-branch-error"
+                  >
+                    {branchError}
+                  </div>
+                )}
+              </Field>
             </FormSection>
 
             {/* ---- Narxlar ---- */}
@@ -1402,7 +1541,9 @@ export default function AdminDashboard() {
             >
               {scanOrigin
                 ? isFormChangedFromSnapshot()
-                  ? "Yangi card sifatida qo'shish"
+                  ? form.branch_id !== (scanOrigin.branch_id || "")
+                    ? `Tanlangan filialga ${Math.max(1, Number(addQty) || 1)} ta qo'shish`
+                    : "Yangi card sifatida qo'shish"
                   : `Mahsulotga ${Math.max(1, Number(addQty) || 1)} ta qo'shish`
                 : editing
                   ? "Yangilash"

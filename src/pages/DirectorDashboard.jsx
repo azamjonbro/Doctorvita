@@ -36,6 +36,7 @@ import {
   ClipboardList,
   Building2,
   AlertCircle,
+  Pencil,
 } from "lucide-react";
 import {
   BarChart,
@@ -54,6 +55,7 @@ import {
 import MapView from "@/components/MapView";
 import { formatCalendarDate } from "@/lib/posLogic";
 import ExpiryProductsPanel from "@/components/ExpiryProductsPanel";
+import SalesScreen from "@/pages/pos/SalesScreen";
 import { DatePicker } from "@/components/ui/date-picker";
 import "../index.css";
 
@@ -69,6 +71,8 @@ export default function DirectorDashboard() {
   const [lastPurch, setLastPurch] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [openWorker, setOpenWorker] = useState(false);
+  const [editingWorker, setEditingWorker] = useState(null);
+  const [editBranch, setEditBranch] = useState(null);
   const [salesQuickRange, setSalesQuickRange] = useState("all");
   const [salesDateFrom, setSalesDateFrom] = useState("");
   const [salesDateTo, setSalesDateTo] = useState("");
@@ -129,15 +133,53 @@ export default function DirectorDashboard() {
     return () => clearInterval(id);
   }, [load]);
 
+  const emptyWorkerForm = {
+    name: "",
+    surname: "",
+    phone: "",
+    email: "",
+    password: "",
+    branch_id: "",
+  };
+
+  const startCreateWorker = () => {
+    setEditingWorker(null);
+    setWForm(emptyWorkerForm);
+    setOpenWorker(true);
+  };
+
+  const startEditWorker = (worker) => {
+    setEditingWorker(worker);
+    setWForm({
+      name: worker.name || "",
+      surname: worker.surname || "",
+      phone: worker.phone || "",
+      email: worker.email || "",
+      password: "",
+      branch_id: worker.branch_id || "",
+    });
+    setOpenWorker(true);
+  };
+
   const addWorker = async (e) => {
     e.preventDefault();
     try {
-      await api.post("/users/workers", {
-        ...wForm,
-        branch_id: wForm.branch_id || null,
-      });
-      toast.success("Yangi sotuvchi qo'shildi");
+      if (editingWorker) {
+        await api.put(`/users/workers/${editingWorker.id}`, {
+          ...wForm,
+          password: wForm.password || null,
+          branch_id: wForm.branch_id || null,
+        });
+        toast.success("Sotuvchi yangilandi");
+      } else {
+        await api.post("/users/workers", {
+          ...wForm,
+          branch_id: wForm.branch_id || null,
+        });
+        toast.success("Yangi sotuvchi qo'shildi");
+      }
       setOpenWorker(false);
+      setEditingWorker(null);
       setWForm({
         name: "",
         surname: "",
@@ -177,6 +219,42 @@ export default function DirectorDashboard() {
           ? "Filial ishga tushirildi"
           : "Filial vaqtincha to'xtatildi",
       );
+      await load();
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail) || e.message);
+    }
+  };
+
+  const saveBranch = async (e) => {
+    e.preventDefault();
+    try {
+      await api.put(`/branches/${editBranch.id}`, {
+        name: editBranch.name,
+        code: editBranch.code,
+        address: editBranch.address,
+        active: editBranch.active !== false,
+      });
+      toast.success("Filial yangilandi");
+      setEditBranch(null);
+      await load();
+    } catch (e) {
+      toast.error(formatApiError(e.response?.data?.detail) || e.message);
+    }
+  };
+
+  const deleteBranch = async (branch) => {
+    const staff = workers.filter((w) => w.branch_id === branch.id).length;
+    if (
+      !window.confirm(
+        `"${branch.name}" filiali o'chirilsinmi?\n\n` +
+          `${staff} ta hodim filialsiz qoladi, filial mahsulotlari esa ` +
+          `"Filialsiz" bo'lib qoladi (o'chmaydi, keyin boshqa filialga o'tkazish mumkin).`,
+      )
+    )
+      return;
+    try {
+      await api.delete(`/branches/${branch.id}`);
+      toast.success("Filial o'chirildi");
       await load();
     } catch (e) {
       toast.error(formatApiError(e.response?.data?.detail) || e.message);
@@ -419,6 +497,9 @@ export default function DirectorDashboard() {
             </TabsTrigger>
             <TabsTrigger value="sales" data-testid="d-tab-sales">
               Sotuvlar
+            </TabsTrigger>
+            <TabsTrigger value="pos" data-testid="d-tab-pos">
+              Sotuv qo'shish
             </TabsTrigger>
             <TabsTrigger value="branches" data-testid="d-tab-branches">
               <Building2 className="w-3.5 h-3.5 mr-1" /> Filiallar
@@ -691,6 +772,10 @@ export default function DirectorDashboard() {
                 </TableBody>
               </Table>
             </div>
+          </TabsContent>
+
+          <TabsContent value="pos" className="mt-6">
+            <SalesScreen user={user} onCompleted={load} />
           </TabsContent>
 
           <TabsContent value="sales" className="mt-6 space-y-4">
@@ -1017,6 +1102,28 @@ export default function DirectorDashboard() {
                           ? "Ishga tushirish"
                           : "To'xtatish"}
                       </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditBranch({ ...branch })}
+                          className="rounded-full"
+                          data-testid={`edit-branch-${branch.id}`}
+                        >
+                          <Pencil className="w-3.5 h-3.5 mr-1" /> Tahrirlash
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteBranch(branch)}
+                          className="text-rose hover:bg-rose/10 rounded-full"
+                          data-testid={`delete-branch-${branch.id}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1036,7 +1143,7 @@ export default function DirectorDashboard() {
           <TabsContent value="workers" className="mt-6 space-y-4">
             <div className="flex items-center justify-between">
               <Button
-                onClick={() => setOpenWorker(true)}
+                onClick={startCreateWorker}
                 disabled={workers.length >= 5}
                 className="bg-noir text-ivory hover:bg-rose rounded-full"
                 data-testid="add-worker-btn"
@@ -1057,15 +1164,30 @@ export default function DirectorDashboard() {
                     </div>
                     <div className="text-sm text-stone">{w.email}</div>
                     <div className="text-sm text-stone">{w.phone}</div>
+                    <div className="text-sm text-stone flex items-center gap-1">
+                      <Building2 className="w-3.5 h-3.5" />
+                      {branches.find((b) => b.id === w.branch_id)?.name ||
+                        "Filial biriktirilmagan"}
+                    </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    onClick={() => deleteWorker(w.id)}
-                    className="text-rose hover:bg-rose/10"
-                    data-testid={`delete-worker-${w.id}`}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      onClick={() => startEditWorker(w)}
+                      className="text-noir hover:bg-cream"
+                      data-testid={`edit-worker-${w.id}`}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => deleteWorker(w.id)}
+                      className="text-rose hover:bg-rose/10"
+                      data-testid={`delete-worker-${w.id}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
               {workers.length === 0 && (
@@ -1285,7 +1407,7 @@ export default function DirectorDashboard() {
         <DialogContent className="bg-ivory border-line rounded-2xl">
           <DialogHeader>
             <DialogTitle className="font-serif text-2xl text-noir">
-              Yangi sotuvchi
+              {editingWorker ? "Sotuvchini tahrirlash" : "Yangi sotuvchi"}
             </DialogTitle>
           </DialogHeader>
           <form
@@ -1351,7 +1473,11 @@ export default function DirectorDashboard() {
               />
             </div>
             <div>
-              <Label>Parol</Label>
+              <Label>
+                {editingWorker
+                  ? "Yangi parol (o'zgartirmaslik uchun bo'sh qoldiring)"
+                  : "Parol"}
+              </Label>
               <Input
                 data-testid="w-password"
                 type="password"
@@ -1359,7 +1485,7 @@ export default function DirectorDashboard() {
                 onChange={(e) =>
                   setWForm({ ...wForm, password: e.target.value })
                 }
-                required
+                required={!editingWorker}
                 minLength={6}
               />
             </div>
@@ -1368,9 +1494,64 @@ export default function DirectorDashboard() {
               className="w-full bg-noir text-ivory hover:bg-rose rounded-full h-11"
               data-testid="w-submit"
             >
-              Yaratish
+              {editingWorker ? "Saqlash" : "Yaratish"}
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(editBranch)}
+        onOpenChange={(v) => !v && setEditBranch(null)}
+      >
+        <DialogContent className="bg-ivory border-line rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl text-noir">
+              Filialni tahrirlash
+            </DialogTitle>
+          </DialogHeader>
+          {editBranch && (
+            <form
+              onSubmit={saveBranch}
+              className="space-y-3"
+              data-testid="edit-branch-form"
+            >
+              <div>
+                <Label>Nomi</Label>
+                <Input
+                  value={editBranch.name}
+                  onChange={(e) =>
+                    setEditBranch({ ...editBranch, name: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div>
+                <Label>Kodi</Label>
+                <Input
+                  value={editBranch.code || ""}
+                  onChange={(e) =>
+                    setEditBranch({ ...editBranch, code: e.target.value })
+                  }
+                />
+              </div>
+              <div>
+                <Label>Manzil</Label>
+                <Input
+                  value={editBranch.address || ""}
+                  onChange={(e) =>
+                    setEditBranch({ ...editBranch, address: e.target.value })
+                  }
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full bg-noir text-ivory hover:bg-rose rounded-full h-11"
+              >
+                Saqlash
+              </Button>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>
