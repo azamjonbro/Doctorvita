@@ -94,6 +94,7 @@ export default function DirectorDashboard() {
     email: "",
     password: "",
     branch_id: "",
+    all_branches: false,
   });
 
   const load = useCallback(async () => {
@@ -140,6 +141,7 @@ export default function DirectorDashboard() {
     email: "",
     password: "",
     branch_id: "",
+    all_branches: false,
   };
 
   const startCreateWorker = () => {
@@ -157,6 +159,7 @@ export default function DirectorDashboard() {
       email: worker.email || "",
       password: "",
       branch_id: worker.branch_id || "",
+      all_branches: Boolean(worker.all_branches),
     });
     setOpenWorker(true);
   };
@@ -187,6 +190,7 @@ export default function DirectorDashboard() {
         email: "",
         password: "",
         branch_id: "",
+        all_branches: false,
       });
       await load();
     } catch (e) {
@@ -1169,6 +1173,14 @@ export default function DirectorDashboard() {
                       {branches.find((b) => b.id === w.branch_id)?.name ||
                         "Filial biriktirilmagan"}
                     </div>
+                    {w.all_branches && (
+                      <span
+                        className="inline-block mt-1 text-xs rounded-full bg-noir text-ivory px-2 py-0.5"
+                        data-testid={`worker-all-branches-${w.id}`}
+                      >
+                        Barcha filiallarda ishlaydi
+                      </span>
+                    )}
                   </div>
                   <div className="flex gap-1">
                     <Button
@@ -1444,8 +1456,31 @@ export default function DirectorDashboard() {
                 onChange={(e) => setWForm({ ...wForm, phone: e.target.value })}
               />
             </div>
+            <button
+              type="button"
+              onClick={() =>
+                setWForm({ ...wForm, all_branches: !wForm.all_branches })
+              }
+              className={`w-full flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-sm text-left transition-colors ${wForm.all_branches ? "bg-noir text-ivory border-noir" : "bg-white text-noir border-line hover:bg-cream"}`}
+              aria-pressed={wForm.all_branches}
+              data-testid="w-all-branches"
+            >
+              <span className="flex items-center gap-2">
+                <Building2 className="w-4 h-4" />
+                Barcha filiallarga biriktirish
+              </span>
+              <span className="text-xs opacity-80">
+                {wForm.all_branches ? "Yoqilgan ✓" : "O'chiq"}
+              </span>
+            </button>
+            {wForm.all_branches && (
+              <div className="text-xs text-stone -mt-1">
+                Xodim har bir filialning "Sotuvni kim qildi?" ro'yxatida
+                chiqadi. O'zi tizimga kirganda asosiy filialida ishlaydi.
+              </div>
+            )}
             <div>
-              <Label>Filial</Label>
+              <Label>{wForm.all_branches ? "Asosiy filial" : "Filial"}</Label>
               <select
                 value={wForm.branch_id}
                 onChange={(e) =>
