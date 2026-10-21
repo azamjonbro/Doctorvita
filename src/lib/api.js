@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const LOCAL_BACKEND_URL = "http://127.0.0.1:8000";
-const PROD_BACKEND_URL = "https://doctor.sds-max.uz";
+const PROD_BACKEND_URL = "https://doctor.techinfo.uz";
 const isLocalDev = typeof window !== "undefined" && ["localhost", "127.0.0.1", "0.0.0.0"].includes(window.location.hostname);
 
 const configuredBackend = (import.meta.env.VITE_BACKEND_URL || import.meta.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
