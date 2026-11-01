@@ -1219,7 +1219,6 @@ export default function DirectorDashboard() {
             <div className="flex items-center justify-between">
               <Button
                 onClick={startCreateWorker}
-                disabled={workers.length >= 5}
                 className="bg-noir text-ivory hover:bg-rose rounded-full"
                 data-testid="add-worker-btn"
               >
